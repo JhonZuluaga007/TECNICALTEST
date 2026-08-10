@@ -6,13 +6,14 @@ import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
 import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
 
 class CardCatWidget extends StatelessWidget {
-  const CardCatWidget(
-      {super.key,
-      required this.nameCat,
-      required this.imageUrlCat,
-      required this.countryOrigin,
-      required this.intelligent,
-      required this.onPressed});
+  const CardCatWidget({
+    super.key,
+    required this.nameCat,
+    required this.imageUrlCat,
+    required this.countryOrigin,
+    required this.intelligent,
+    required this.onPressed,
+  });
   final String nameCat;
   final String imageUrlCat;
   final String countryOrigin;
@@ -27,8 +28,9 @@ class CardCatWidget extends StatelessWidget {
       surfaceTintColor: wColor.mapColors["W"],
       color: wColor.mapColors["W"],
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: wColor.black, width: 1)),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: wColor.black, width: 1),
+      ),
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 15.h),
         child: Column(
@@ -43,14 +45,15 @@ class CardCatWidget extends StatelessWidget {
                 ),
                 TextButton(
                   style: ButtonStyle(
-                      overlayColor: MaterialStatePropertyAll(wColor.black[30])),
+                    overlayColor: WidgetStatePropertyAll(wColor.black[30]),
+                  ),
                   onPressed: onPressed,
                   child: TextWidget(
                     text: "More...",
                     fontSize: 18,
                     colorText: wColor.black,
                   ),
-                )
+                ),
               ],
             ),
             SizedBox(height: 5.h),
@@ -72,7 +75,7 @@ class CardCatWidget extends StatelessWidget {
                   value: intelligent,
                   radius: 10,
                   fontSize: 20,
-                )
+                ),
               ],
             ),
           ],

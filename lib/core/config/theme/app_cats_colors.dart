@@ -5,7 +5,7 @@ class AppCatsColor {
     "W": Colors.white,
     'BG': const Color.fromARGB(255, 240, 240, 240),
     "LigthGreen": const Color.fromARGB(255, 177, 224, 179),
-    "LigthGrey": const Color.fromARGB(255, 225, 223, 223)
+    "LigthGrey": const Color.fromARGB(255, 225, 223, 223),
   };
 
   MaterialColor black = const MaterialColor(0xFF141414, {
@@ -22,9 +22,5 @@ class AppCatsColor {
     700: Color(0xFF000000),
     800: Color(0xFF000000),
     900: Color(0xFF000000),
-  });
-
-  MaterialColor lightBlue = MaterialColor(Colors.blue.value, {
-    100: Colors.blue[100]!,
   });
 }

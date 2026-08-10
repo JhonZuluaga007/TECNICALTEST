@@ -31,30 +31,34 @@ class ListCharacteristicsCatbreeds extends StatelessWidget {
   ///   characteriticsValue: ["Negro", 3, 4.5],
   ///
   /// );
-  const ListCharacteristicsCatbreeds(
-      {super.key,
-      required this.characteriticsNames,
-      required this.characteriticsValue,
-      this.fontSize,
-      this.radius});
+  const ListCharacteristicsCatbreeds({
+    super.key,
+    required this.characteriticsNames,
+    required this.characteriticsValue,
+    this.fontSize,
+    this.radius,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-        child: Column(
-            children: List.generate(characteriticsNames.length, (index) {
-      return Column(
-        children: [
-          BreedCharacteristicWidget(
-              width: 500.w,
-              height: 30,
-              radius: radius ?? 10,
-              fontSize: fontSize ?? 18,
-              nameCharacteristic: characteriticsNames[index],
-              value: characteriticsValue[index]),
-          SizedBox(height: 8.h),
-        ],
-      );
-    })));
+      child: Column(
+        children: List.generate(characteriticsNames.length, (index) {
+          return Column(
+            children: [
+              BreedCharacteristicWidget(
+                width: 500.w,
+                height: 30,
+                radius: radius ?? 10,
+                fontSize: fontSize ?? 18,
+                nameCharacteristic: characteriticsNames[index],
+                value: characteriticsValue[index],
+              ),
+              SizedBox(height: 8.h),
+            ],
+          );
+        }),
+      ),
+    );
   }
 }

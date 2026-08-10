@@ -7,15 +7,13 @@ import '../datasource/landing_cats_data_source.dart';
 
 class LandingCatsRepositoryImpl implements LandingCatsRepository {
   final LandingCatsDataSource landingCatsDataSource;
-  LandingCatsRepositoryImpl({
-    required this.landingCatsDataSource,
-  });
+  LandingCatsRepositoryImpl({required this.landingCatsDataSource});
 
   @override
   Future<Either<InvalidData, List<CatBreedEntity>>> getAllCats() async {
     try {
-      final List<CatBreedEntity> reponseAllEvents =
-          await landingCatsDataSource.getAllCats();
+      final List<CatBreedEntity> reponseAllEvents = await landingCatsDataSource
+          .getAllCats();
       return Right(reponseAllEvents);
     } on InvalidData catch (invalidData) {
       return Left(invalidData);

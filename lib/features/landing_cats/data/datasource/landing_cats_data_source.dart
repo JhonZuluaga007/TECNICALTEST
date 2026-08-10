@@ -9,18 +9,25 @@ import '../../../../core/config/helpers/errors/invalid_data.dart';
 
 class LandingCatsDataSource {
   Future<List<CatBreedModel>> getAllCats() async {
-    var response = await http.get(Uri.parse(Endpoints.urlAllCats),
-        headers: {"api-key": "bda53789-d59e-46cd-9bc4-2936630fde39"});
+    var response = await http.get(
+      Uri.parse(Endpoints.urlAllCats),
+      headers: {"api-key": "bda53789-d59e-46cd-9bc4-2936630fde39"},
+    );
     try {
       if (response.statusCode == 200) {
         if (response.body.isNotEmpty) {
-          List<CatBreedModel> allCatsResponse =
-              catBreedModelFromMap(response.body);
+          List<CatBreedModel> allCatsResponse = catBreedModelFromMap(
+            response.body,
+          );
 
           List<CatBreedModel> allCatsWithImage = [];
           for (var i = 0; i < allCatsResponse.length; i++) {
-            allCatsWithImage.add(await getImageOfTheCat(
-                allCatsResponse[i].referenceImageId, allCatsResponse[i]));
+            allCatsWithImage.add(
+              await getImageOfTheCat(
+                allCatsResponse[i].referenceImageId,
+                allCatsResponse[i],
+              ),
+            );
           }
           return allCatsWithImage;
         } else {
@@ -28,20 +35,25 @@ class LandingCatsDataSource {
         }
       }
       throw InvalidData(
-          message: "Error al llamar el servicio",
-          statusCode: response.statusCode);
+        message: "Error al llamar el servicio",
+        statusCode: response.statusCode,
+      );
     } catch (error) {
       throw InvalidData(
-          message: "Este es el error del servicio: $error",
-          statusCode: response.statusCode);
+        message: "Este es el error del servicio: $error",
+        statusCode: response.statusCode,
+      );
     }
   }
 
   Future<CatBreedModel> getImageOfTheCat(
-      String referenceId, CatBreedModel catBreedModel) async {
+    String referenceId,
+    CatBreedModel catBreedModel,
+  ) async {
     var response = await http.get(
-        Uri.parse("${Endpoints.urlForGetImageCat}$referenceId"),
-        headers: {"api-key": "bda53789-d59e-46cd-9bc4-2936630fde39"});
+      Uri.parse("${Endpoints.urlForGetImageCat}$referenceId"),
+      headers: {"api-key": "bda53789-d59e-46cd-9bc4-2936630fde39"},
+    );
     if (response.statusCode == 200) {
       final mapInfo = json.decode(response.body);
       catBreedModel.urlImage = mapInfo["url"];

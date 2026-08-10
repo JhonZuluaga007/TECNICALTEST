@@ -1,4 +1,4 @@
-package com.example.tecnical_test_pragma
+package com.jhonzuluaga.catbreeds
 
 import io.flutter.embedding.android.FlutterActivity
 

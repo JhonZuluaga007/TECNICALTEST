@@ -15,20 +15,31 @@ class LandingCatsBloc extends Bloc<LandingCatsEvent, LandingCatsState> {
     on<AllCatsEvent>((event, emit) async {
       emit(state.copyWith(formSubmissionStatusService: FormSubmitting()));
       final getAllCatsResponse = await getAllCatsUseCase.getAllCatsCall();
-      getAllCatsResponse.fold((error) {
-        emit(state.copyWith(
-            formSubmissionStatusService:
-                SubmissionFailed(exception: Exception(error.message))));
-      }, (response) {
-        emit(state.copyWith(
-            formSubmissionStatusService: SubmissionSuccess(),
-            listAllCats: response));
-      });
+      getAllCatsResponse.fold(
+        (error) {
+          emit(
+            state.copyWith(
+              formSubmissionStatusService: SubmissionFailed(
+                exception: Exception(error.message),
+              ),
+            ),
+          );
+        },
+        (response) {
+          emit(
+            state.copyWith(
+              formSubmissionStatusService: SubmissionSuccess(),
+              listAllCats: response,
+            ),
+          );
+        },
+      );
     });
 
     on<AddNameAlreadySearchedEvent>((event, emit) {
       emit(
-          state.copyWith(namesAlreadySearched: event.listNamesAlreadySearched));
+        state.copyWith(namesAlreadySearched: event.listNamesAlreadySearched),
+      );
     });
   }
 }

@@ -25,12 +25,12 @@ class _SplashCatBreedsState extends State<SplashCatBreeds> {
     startTimer();
   }
 
-  startTimer() async {
+  Future<Timer> startTimer() async {
     var duration = const Duration(seconds: 5);
     return Timer(duration, route);
   }
 
-  route() {
+  void route() {
     context.goNamed(homePage);
   }
 
@@ -49,14 +49,13 @@ class _SplashCatBreedsState extends State<SplashCatBreeds> {
       children: [
         Center(
           child: TextWidget(
-              text: "Catbreeds",
-              fontSize: 42,
-              fontWeight: FontWeight.bold,
-              colorText: wColor.black),
+            text: "Catbreeds",
+            fontSize: 42,
+            fontWeight: FontWeight.bold,
+            colorText: wColor.black,
+          ),
         ),
-        SizedBox(
-          height: 170.h,
-        )
+        SizedBox(height: 170.h),
       ],
     );
   }

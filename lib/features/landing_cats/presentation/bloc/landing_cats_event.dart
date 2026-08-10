@@ -7,7 +7,5 @@ class AllCatsEvent extends LandingCatsEvent {}
 
 class AddNameAlreadySearchedEvent extends LandingCatsEvent {
   final List<String> listNamesAlreadySearched;
-  AddNameAlreadySearchedEvent({
-    required this.listNamesAlreadySearched,
-  });
+  AddNameAlreadySearchedEvent({required this.listNamesAlreadySearched});
 }

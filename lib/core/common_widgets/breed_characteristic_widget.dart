@@ -29,9 +29,10 @@ class BreedCharacteristicWidget extends StatelessWidget {
       child: Row(
         children: [
           TextWidget(
-              text: nameCharacteristic,
-              fontSize: fontSize ?? 22,
-              colorText: wColor.black),
+            text: nameCharacteristic,
+            fontSize: fontSize ?? 22,
+            colorText: wColor.black,
+          ),
           SizedBox(width: 12.w),
           Expanded(
             child: ListView.separated(
@@ -49,7 +50,7 @@ class BreedCharacteristicWidget extends StatelessWidget {
                 return SizedBox(width: 5.w);
               },
             ),
-          )
+          ),
         ],
       ),
     );

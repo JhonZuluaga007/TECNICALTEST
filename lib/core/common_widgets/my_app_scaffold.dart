@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
 
 class MyAppScaffold extends StatelessWidget {
-  const MyAppScaffold(
-      {super.key,
-      this.scrollDirection,
-      required this.children,
-      this.mainAxisAlignment,
-      this.crossAxisAlignment,
-      this.appBar,
-      this.paddingColumn,
-      this.backgroundColor,
-      this.bottomSheet});
+  const MyAppScaffold({
+    super.key,
+    this.scrollDirection,
+    required this.children,
+    this.mainAxisAlignment,
+    this.crossAxisAlignment,
+    this.appBar,
+    this.paddingColumn,
+    this.backgroundColor,
+    this.bottomSheet,
+  });
   final Axis? scrollDirection;
   final List<Widget> children;
   final MainAxisAlignment? mainAxisAlignment;

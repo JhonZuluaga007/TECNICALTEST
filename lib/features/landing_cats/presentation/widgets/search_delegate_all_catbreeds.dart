@@ -17,53 +17,65 @@ class SearchDelegateAllCatbreeds extends SearchDelegate {
   final List<CatBreedEntity> listCatBreedEntity;
   final ScrollController scrollController = ScrollController();
 
-  SearchDelegateAllCatbreeds(
-      {required this.listCatBreedEntity, required this.filterNamesSearched});
+  SearchDelegateAllCatbreeds({
+    required this.listCatBreedEntity,
+    required this.filterNamesSearched,
+  });
 
   @override
   List<Widget>? buildActions(BuildContext context) {
     return [
       IconButton(
-          onPressed: () => query = "",
-          icon: Icon(Icons.clear, color: wColor.black)),
+        onPressed: () => query = "",
+        icon: Icon(Icons.clear, color: wColor.black),
+      ),
     ];
   }
 
   void callEventSaveNamesAlreadySearched(
-      BuildContext context, List<String> listNamesAlreadySearched) {
-    BlocProvider.of<LandingCatsBloc>(context).add(AddNameAlreadySearchedEvent(
-        listNamesAlreadySearched: filterNamesSearched));
+    BuildContext context,
+    List<String> listNamesAlreadySearched,
+  ) {
+    BlocProvider.of<LandingCatsBloc>(context).add(
+      AddNameAlreadySearchedEvent(
+        listNamesAlreadySearched: filterNamesSearched,
+      ),
+    );
   }
 
   @override
   Widget? buildLeading(BuildContext context) {
     return IconButton(
-        onPressed: () {
-          close(context, filterCatBreedEntity);
-        },
-        icon: Icon(Icons.arrow_back, color: wColor.black));
+      onPressed: () {
+        close(context, filterCatBreedEntity);
+      },
+      icon: Icon(Icons.arrow_back, color: wColor.black),
+    );
   }
 
   Widget _emptyContainer(BuildContext context) {
     return SizedBox(
-        child: SizedBox(
-      width: 100.w,
-      child: ListView.builder(
-        itemCount: filterNamesSearched.length,
-        padding: EdgeInsets.symmetric(horizontal: 12.w),
-        itemBuilder: (context, index) {
-          return TextButton(
+      child: SizedBox(
+        width: 100.w,
+        child: ListView.builder(
+          itemCount: filterNamesSearched.length,
+          padding: EdgeInsets.symmetric(horizontal: 12.w),
+          itemBuilder: (context, index) {
+            return TextButton(
               onPressed: () {
                 query = filterNamesSearched[index];
               },
               child: TextWidget(
-                  textAlign: TextAlign.start,
-                  text: filterNamesSearched[index],
-                  fontSize: 18,
-                  colorText: wColor.black));
-        },
+                textAlign: TextAlign.start,
+                text: filterNamesSearched[index],
+                fontSize: 18,
+                colorText: wColor.black,
+              ),
+            );
+          },
+        ),
       ),
-    ));
+    );
   }
 
   @override
@@ -88,19 +100,20 @@ class SearchDelegateAllCatbreeds extends SearchDelegate {
 
     return SizedBox(
       child: ListView.builder(
-          controller: scrollController,
-          itemCount: filterCatBreedEntity.length,
-          itemBuilder: (_, int index) {
-            return CardCatWidget(
-              nameCat: filterCatBreedEntity[index].name,
-              imageUrlCat: filterCatBreedEntity[index].urlImage,
-              countryOrigin: filterCatBreedEntity[index].origin,
-              intelligent: filterCatBreedEntity[index].intelligence,
-              onPressed: () {
-                context.goNamed(detailPage, extra: filterCatBreedEntity[index]);
-              },
-            );
-          }),
+        controller: scrollController,
+        itemCount: filterCatBreedEntity.length,
+        itemBuilder: (_, int index) {
+          return CardCatWidget(
+            nameCat: filterCatBreedEntity[index].name,
+            imageUrlCat: filterCatBreedEntity[index].urlImage,
+            countryOrigin: filterCatBreedEntity[index].origin,
+            intelligent: filterCatBreedEntity[index].intelligence,
+            onPressed: () {
+              context.goNamed(detailPage, extra: filterCatBreedEntity[index]);
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -116,19 +129,20 @@ class SearchDelegateAllCatbreeds extends SearchDelegate {
 
     return SizedBox(
       child: ListView.builder(
-          controller: scrollController,
-          itemCount: filterCatBreedEntity.length,
-          itemBuilder: (_, int index) {
-            return CardCatWidget(
-              nameCat: filterCatBreedEntity[index].name,
-              imageUrlCat: filterCatBreedEntity[index].urlImage,
-              countryOrigin: filterCatBreedEntity[index].origin,
-              intelligent: filterCatBreedEntity[index].intelligence,
-              onPressed: () {
-                context.goNamed(detailPage, extra: filterCatBreedEntity[index]);
-              },
-            );
-          }),
+        controller: scrollController,
+        itemCount: filterCatBreedEntity.length,
+        itemBuilder: (_, int index) {
+          return CardCatWidget(
+            nameCat: filterCatBreedEntity[index].name,
+            imageUrlCat: filterCatBreedEntity[index].urlImage,
+            countryOrigin: filterCatBreedEntity[index].origin,
+            intelligent: filterCatBreedEntity[index].intelligence,
+            onPressed: () {
+              context.goNamed(detailPage, extra: filterCatBreedEntity[index]);
+            },
+          );
+        },
+      ),
     );
   }
 }
