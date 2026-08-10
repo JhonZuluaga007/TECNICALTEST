@@ -12,9 +12,15 @@ class _$Injector extends Injector {
     final KiwiContainer container = KiwiContainer();
     container
       ..registerFactory((c) => LandingCatsDataSource())
-      ..registerFactory<LandingCatsRepository>((c) => LandingCatsRepositoryImpl(
-          landingCatsDataSource: c<LandingCatsDataSource>()))
-      ..registerFactory((c) =>
-          GetAllCatsUseCase(landingCatsRepository: c<LandingCatsRepository>()));
+      ..registerFactory<LandingCatsRepository>(
+        (c) => LandingCatsRepositoryImpl(
+          landingCatsDataSource: c.resolve<LandingCatsDataSource>(),
+        ),
+      )
+      ..registerFactory(
+        (c) => GetAllCatsUseCase(
+          landingCatsRepository: c.resolve<LandingCatsRepository>(),
+        ),
+      );
   }
 }

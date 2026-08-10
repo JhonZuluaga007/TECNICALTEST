@@ -1,0 +1,101 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Visual Studio Code related
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+flutter_*.png
+linked_*.ds
+unlinked.ds
+unlinked_spec.ds
+
+# Coverage (Fase 9: gate de cobertura en CI)
+coverage/
+lcov.info
+
+# FVM — se commitea la config (.fvm/fvm_config.json / .fvmrc) pero NUNCA el SDK
+.fvm/flutter_sdk
+.fvm/versions/
+
+# Secretos: --dart-define-from-file (Fase 4)
+env/*.json
+!env/example.json
+
+# Golden tests fallidos (Fase 8)
+**/failures/
+
+# Symbolication / obfuscation
+app.*.symbols
+app.*.map.json
+
+# Android related
+# Salidas de build por variante (estan en el template oficial de Flutter).
+/android/app/debug
+/android/app/profile
+/android/app/release
+**/android/**/gradle-wrapper.jar
+**/android/.gradle
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+**/android/key.properties
+*.jks
+
+# iOS/macOS related
+**/Flutter/App.framework/
+**/Flutter/ephemeral/
+**/Flutter/Flutter.framework/
+**/Flutter/Flutter.podspec
+**/Flutter/Generated.xcconfig
+**/Flutter/app.flx
+**/Flutter/app.zip
+**/Flutter/flutter_assets/
+**/Flutter/flutter_export_environment.sh
+**/ServiceDefinitions.json
+**/Runner/GeneratedPluginRegistrant.*
+**/ios/Flutter/.last_build_id
+**/xcuserdata/
+**/DerivedData/
+**/Icon?
+**/Pods/
+**/.symlinks/
+**/*.mode1v3
+**/*.mode2v3
+**/*.moved-aside
+**/*.pbxuser
+**/*.perspectivev3
+
+# Windows / Linux
+**/windows/flutter/generated_plugin*
+**/linux/flutter/generated_plugin*

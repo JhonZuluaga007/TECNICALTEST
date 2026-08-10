@@ -36,49 +36,56 @@ class _LandingPageState extends State<LandingPage> {
           paddingColumn: EdgeInsets.symmetric(horizontal: 12.w),
           appBar: AppBar(
             automaticallyImplyLeading: false,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
             backgroundColor: wColor.mapColors["W"],
             title: TextWidget(
-                text: "Catbreeds", fontSize: 20, colorText: wColor.black),
+              text: "Catbreeds",
+              fontSize: 20,
+              colorText: wColor.black,
+            ),
             bottom: PreferredSize(
-                preferredSize: Size(double.infinity, 40.h),
-                child: Padding(
-                  padding:
-                      EdgeInsets.only(left: 12.w, right: 12.w, bottom: 5.h),
-                  child: Container(
-                    decoration: BoxDecoration(
-                        color: wColor.mapColors["W"],
-                        border: Border.all(color: wColor.black, width: 1),
-                        borderRadius: BorderRadius.circular(8)),
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 8.w, right: 8.w),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          TextWidget(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w100,
-                            text: "Search by the name",
-                            fontStyle: FontStyle.normal,
-                            colorText: wColor.black,
-                          ),
-                          IconButton(
-                              onPressed: () {
-                                showSearch(
-                                    context: context,
-                                    delegate: SearchDelegateAllCatbreeds(
-                                        listCatBreedEntity:
-                                            state.listAllCats ?? [],
-                                        filterNamesSearched:
-                                            state.namesAlreadySearched ?? []));
-                              },
-                              icon: const Icon(Icons.search_rounded))
-                        ],
-                      ),
+              preferredSize: Size(double.infinity, 40.h),
+              child: Padding(
+                padding: EdgeInsets.only(left: 12.w, right: 12.w, bottom: 5.h),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: wColor.mapColors["W"],
+                    border: Border.all(color: wColor.black, width: 1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 8.w, right: 8.w),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextWidget(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w100,
+                          text: "Search by the name",
+                          fontStyle: FontStyle.normal,
+                          colorText: wColor.black,
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            showSearch(
+                              context: context,
+                              delegate: SearchDelegateAllCatbreeds(
+                                listCatBreedEntity: state.listAllCats ?? [],
+                                filterNamesSearched:
+                                    state.namesAlreadySearched ?? [],
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.search_rounded),
+                        ),
+                      ],
                     ),
                   ),
-                )),
+                ),
+              ),
+            ),
           ),
           children: [
             SizedBox(height: 12.h),
@@ -97,23 +104,21 @@ class _LandingPageState extends State<LandingPage> {
                             countryOrigin: state.listAllCats![index].origin,
                             intelligent: state.listAllCats![index].intelligence,
                             onPressed: () {
-                              context.goNamed(detailPage,
-                                  extra: state.listAllCats![index]);
+                              context.goNamed(
+                                detailPage,
+                                extra: state.listAllCats![index],
+                              );
                             },
                           );
                         },
                         separatorBuilder: (BuildContext context, int index) =>
-                            SizedBox(
-                          height: 12.h,
-                        ),
+                            SizedBox(height: 12.h),
                       ),
                     )
                   : Center(
-                      child: CircularProgressIndicator(
-                        color: wColor.black,
-                      ),
+                      child: CircularProgressIndicator(color: wColor.black),
                     ),
-            )
+            ),
           ],
         );
       },

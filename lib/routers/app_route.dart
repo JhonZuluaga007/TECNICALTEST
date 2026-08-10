@@ -9,35 +9,34 @@ class AppRoute {
   }
 
   static GoRouter router([Widget? widget]) => GoRouter(
-        initialLocation: splashPage,
+    initialLocation: splashPage,
+    routes: [
+      GoRoute(
+        path: splashPage,
+        name: splashPage,
+        builder: (context, state) {
+          return widget ?? const SplashCatBreeds();
+        },
         routes: [
           GoRoute(
-            path: splashPage,
-            name: splashPage,
+            path: homePage,
+            name: homePage,
             builder: (context, state) {
-              return widget ?? const SplashCatBreeds();
+              return const LandingPage();
             },
             routes: [
               GoRoute(
-                  path: homePage,
-                  name: homePage,
-                  builder: (context, state) {
-                    return const LandingPage();
-                  },
-                  routes: [
-                    GoRoute(
-                      path: detailPage,
-                      name: detailPage,
-                      builder: (context, state) {
-                        final catBreeds = (state.extra!) as CatBreedEntity;
-                        return DetailCatPage(
-                          catBreedEntity: catBreeds,
-                        );
-                      },
-                    ),
-                  ]),
+                path: detailPage,
+                name: detailPage,
+                builder: (context, state) {
+                  final catBreeds = (state.extra!) as CatBreedEntity;
+                  return DetailCatPage(catBreedEntity: catBreeds);
+                },
+              ),
             ],
           ),
         ],
-      );
+      ),
+    ],
+  );
 }

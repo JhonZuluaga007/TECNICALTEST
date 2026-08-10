@@ -6,9 +6,7 @@ import '../repository/landing_cats_repository.dart';
 
 class GetAllCatsUseCase {
   final LandingCatsRepository landingCatsRepository;
-  GetAllCatsUseCase({
-    required this.landingCatsRepository,
-  });
+  GetAllCatsUseCase({required this.landingCatsRepository});
 
   Future<Either<InvalidData, List<CatBreedEntity>>> getAllCatsCall() async {
     return await landingCatsRepository.getAllCats();
