@@ -23,8 +23,18 @@ class _LandingPageState extends State<LandingPage> {
 
   @override
   void initState() {
-    BlocProvider.of<LandingCatsBloc>(context).add(AllCatsEvent());
     super.initState();
+    // Phase 6 moves this dispatch out of `initState` (where it re-fetches on
+    // EVERY return from the detail page) and into the bloc's creation.
+    BlocProvider.of<LandingCatsBloc>(context).add(const AllCatsEvent());
+  }
+
+  @override
+  void dispose() {
+    // There was not a single `dispose()` anywhere in `lib/`: this controller and
+    // the other two leaked.
+    scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -72,9 +82,7 @@ class _LandingPageState extends State<LandingPage> {
                             showSearch(
                               context: context,
                               delegate: SearchDelegateAllCatbreeds(
-                                listCatBreedEntity: state.listAllCats ?? [],
-                                filterNamesSearched:
-                                    state.namesAlreadySearched ?? [],
+                                listCatBreedEntity: state.listAllCats,
                               ),
                             );
                           },
@@ -96,18 +104,16 @@ class _LandingPageState extends State<LandingPage> {
                       child: ListView.separated(
                         controller: scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
-                        itemCount: state.listAllCats?.length ?? 0,
+                        itemCount: state.listAllCats.length,
                         itemBuilder: (context, index) {
+                          final breed = state.listAllCats[index];
                           return CardCatWidget(
-                            nameCat: state.listAllCats![index].name,
-                            imageUrlCat: state.listAllCats![index].urlImage,
-                            countryOrigin: state.listAllCats![index].origin,
-                            intelligent: state.listAllCats![index].intelligence,
+                            nameCat: breed.name,
+                            imageUrlCat: breed.urlImage,
+                            countryOrigin: breed.origin,
+                            intelligent: breed.intelligence,
                             onPressed: () {
-                              context.goNamed(
-                                detailPage,
-                                extra: state.listAllCats![index],
-                              );
+                              context.goNamed(detailPage, extra: breed);
                             },
                           );
                         },

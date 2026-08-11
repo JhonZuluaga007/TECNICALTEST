@@ -22,6 +22,10 @@ class TextWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
+      // `textAlign` was declared and never forwarded to the `Text`: the two
+      // call sites using it (`detail_cat_page` and the search delegate) were
+      // silent no-ops.
+      textAlign: textAlign,
       style: GoogleFonts.acme(
         color: colorText,
         fontSize: fontSize,

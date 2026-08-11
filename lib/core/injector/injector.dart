@@ -1,41 +1,51 @@
+import 'package:http/http.dart' as http;
 import 'package:kiwi/kiwi.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/data/datasource/landing_cats_data_source.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/data/repository/landing_cats_repository_impl.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/repository/landing_cats_repository.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_all_cats_use_case.dart';
 
-part 'injector.g.dart';
+/// The app's composition root.
+///
+/// Registrations are hand-written. Phase 2 removed `kiwi_generator` (and with it
+/// `build_runner`) because it pinned `analyzer ^6.0.0`, which is incompatible
+/// with the `analyzer >=8.0.0 <13.0.0` required by the `test` package that
+/// `bloc_test` depends on. The generator produced these same 4 lines.
+///
+/// Phase 5 replaces kiwi with `get_it` + `injectable`.
+abstract final class Injector {
+  static final KiwiContainer container = KiwiContainer();
 
-abstract class Injector {
-  static KiwiContainer container = KiwiContainer();
-  static void setup() {
-    var injector = _$Injector();
-    injector._configure();
+  /// Registers the dependency graph. Idempotent on purpose: kiwi throws
+  /// `KiwiError` when a type is registered twice, so the container has to be
+  /// cleared first or a second `setup()` in the same isolate crashes — which is
+  /// exactly what happens as soon as more than one test file touches it.
+  ///
+  /// [httpClient] exists so integration tests can inject a `MockClient` and boot
+  /// the whole app without network access.
+  static void setup({http.Client? httpClient}) {
+    container.clear();
+    container
+      // Singleton: one connection pool for the whole app. With
+      // `registerFactory` every resolve would build a brand new `http.Client`.
+      ..registerSingleton<http.Client>((c) => httpClient ?? http.Client())
+      ..registerFactory(
+        (c) => LandingCatsDataSource(client: c.resolve<http.Client>()),
+      )
+      ..registerFactory<LandingCatsRepository>(
+        (c) => LandingCatsRepositoryImpl(
+          landingCatsDataSource: c.resolve<LandingCatsDataSource>(),
+        ),
+      )
+      ..registerFactory(
+        (c) => GetAllCatsUseCase(
+          landingCatsRepository: c.resolve<LandingCatsRepository>(),
+        ),
+      );
   }
 
-  static final resolve = container.resolve;
+  static T resolve<T>([String? name]) => container.resolve<T>(name);
 
-  //The repositories and their implementation, the use case and the datasource must always be registered.
-  //If two or more use cases depend on the same repositories and datasource, only the new use case should be registered, since the rest will already be registered.
-
-  //When you finish registering the new use case, you must run the following command in the console
-  // flutter packages pub run build_runner build
-  //If it fails, you must run the following command
-  // flutter packages pub run build_runner build --delete-conflicting-outputs
-  //The second com mand will overwrite the injector.g.dart file if necessary
-
-  //A new factory configuration must be created every time there is a new repository and datasource.
-
-  void _configure() {
-    _configureAuthsModule();
-  }
-
-  void _configureAuthsModule() {
-    _configureAuthFactoriesFactories();
-  }
-
-  @Register.factory(LandingCatsDataSource)
-  @Register.factory(LandingCatsRepository, from: LandingCatsRepositoryImpl)
-  @Register.factory(GetAllCatsUseCase)
-  void _configureAuthFactoriesFactories();
+  /// Empties the container. For test isolation.
+  static void reset() => container.clear();
 }

@@ -15,16 +15,16 @@ class AppCatsResponsiveApp extends StatelessWidget {
       ScreenUtil.init(context, designSize: screenSize, splitScreenMode: kIsWeb);
     }
 
-    // Aquí vivía un `MediaQuery(data: ...copyWith(textScaleFactor: 1.0,
-    // boldText: false))`. Se eliminó a propósito en la Fase 1, y NO se migró a
-    // `TextScaler`: el objetivo del código original era anular el escalado de
-    // texto y la negrita del sistema, o sea desactivar dos ajustes de
-    // accesibilidad del usuario. Migrarlo a `TextScaler.noScaling` habría
-    // conservado el bug con sintaxis nueva.
+    // A `MediaQuery(data: ...copyWith(textScaleFactor: 1.0, boldText: false))`
+    // used to live here. It was deliberately deleted in Phase 1 and NOT
+    // migrated to `TextScaler`: the point of the original code was to cancel
+    // the system's text scaling and bold-text settings, i.e. to disable two of
+    // the user's accessibility preferences. Migrating it to
+    // `TextScaler.noScaling` would have preserved the bug with newer syntax.
     //
-    // Consecuencia esperada: la app ahora respeta el tamaño de fuente del SO,
-    // lo que expondrá desbordes reales de layout. Arreglarlos es trabajo de la
-    // Fase 8 (se prueba a 1.0 / 1.5 / 2.0).
+    // Expected consequence: the app now respects the OS font size, which will
+    // expose real layout overflows. Fixing those is Phase 8's job (tested at
+    // 1.0 / 1.5 / 2.0).
     return child;
   }
 }
