@@ -4,7 +4,7 @@ import 'package:tecnical_test_pragma/core/common_widgets/my_app_scaffold.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/network_image.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
 import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
-import 'package:tecnical_test_pragma/features/detail_cat/presentation/widgets/list_characteristecs_catbreeds_widget.dart';
+import 'package:tecnical_test_pragma/features/detail_cat/presentation/widgets/list_characteristics_catbreeds_widget.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
 
 class DetailCatPage extends StatefulWidget {
@@ -17,6 +17,12 @@ class DetailCatPage extends StatefulWidget {
 
 class _DetailCatPageState extends State<DetailCatPage> {
   final ScrollController scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,13 +74,15 @@ class _DetailCatPageState extends State<DetailCatPage> {
                   ),
                   SizedBox(height: 8.h),
                   ListCharacteristicsCatbreeds(
-                    characteriticsNames: const [
-                      "Intelligence:",
-                      "Adaptability:",
-                    ],
-                    characteriticsValue: [
-                      widget.catBreedEntity.intelligence,
-                      widget.catBreedEntity.adaptability,
+                    characteristics: [
+                      (
+                        label: "Intelligence:",
+                        value: widget.catBreedEntity.intelligence,
+                      ),
+                      (
+                        label: "Adaptability:",
+                        value: widget.catBreedEntity.adaptability,
+                      ),
                     ],
                     fontSize: 20,
                     radius: 12,

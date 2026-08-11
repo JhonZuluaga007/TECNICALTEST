@@ -5,8 +5,8 @@ allprojects {
     }
 }
 
-// Gradle 9 eliminó `rootProject.buildDir` / `project.buildDir` (eran mutables).
-// El equivalente soportado es la Provider API de `layout.buildDirectory`.
+// Gradle 9 removed `rootProject.buildDir` / `project.buildDir` (they were mutable).
+// The supported equivalent is the `layout.buildDirectory` Provider API.
 def newBuildDir = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
 

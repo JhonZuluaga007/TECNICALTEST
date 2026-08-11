@@ -1,15 +1,21 @@
-// ignore_for_file: public_member_api_docs, sort_constructors_first
 part of 'landing_cats_bloc.dart';
 
-class LandingCatsState {
-  final List<CatBreedEntity>? listAllCats;
-  final List<String>? namesAlreadySearched;
-  final FormSubmissionStatus? formSubmissionStatusService;
-  LandingCatsState({
-    this.listAllCats,
-    this.namesAlreadySearched,
+/// Phase 2: became `Equatable`, and the lists are no longer nullable.
+///
+/// With `const []` defaults the constructor can be `const`, which is what makes
+/// `bloc_test`'s `expect:` readable (`const LandingCatsState().copyWith(...)`),
+/// and it removes the four `state.listAllCats![index]` force-unwraps from
+/// `landing_page.dart`.
+class LandingCatsState extends Equatable {
+  const LandingCatsState({
+    this.listAllCats = const [],
+    this.namesAlreadySearched = const [],
     this.formSubmissionStatusService = const InitialFormStatus(),
   });
+
+  final List<CatBreedEntity> listAllCats;
+  final List<String> namesAlreadySearched;
+  final FormSubmissionStatus formSubmissionStatusService;
 
   LandingCatsState copyWith({
     List<CatBreedEntity>? listAllCats,
@@ -23,4 +29,11 @@ class LandingCatsState {
           formSubmissionStatusService ?? this.formSubmissionStatusService,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    listAllCats,
+    namesAlreadySearched,
+    formSubmissionStatusService,
+  ];
 }

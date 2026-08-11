@@ -1,12 +1,12 @@
-/// Breakpoint único heredado, consumido solo por [AppCatsResponsiveApp].
+/// Legacy single breakpoint, consumed only by [AppCatsResponsiveApp].
 ///
-/// La Fase 8 lo reemplaza por `WindowSize` (breakpoints Material 3:
-/// compact/medium/expanded/large) en `core/design_system/breakpoints.dart`.
+/// Phase 8 replaces it with `WindowSize` (Material 3 breakpoints:
+/// compact/medium/expanded/large) in `core/design_system/breakpoints.dart`.
 ///
-/// Los getters `isMobile`/`isAppleDevice`/`isDesktop` se eliminaron en la
-/// Fase 0: no tenían un solo uso y los dos últimos llamaban `Platform.isMacOS`
-/// sin guard `kIsWeb`, así que habrían lanzado en web. Quitarlos también saca
-/// la dependencia de `dart:io` de este archivo.
+/// The `isMobile`/`isAppleDevice`/`isDesktop` getters were removed in Phase 0:
+/// they had zero usages, and the last two called `Platform.isMacOS` without a
+/// `kIsWeb` guard, so they would have thrown on web. Removing them also drops
+/// the `dart:io` dependency from this file.
 bool isSmallScreen(double width) {
   return width < 640;
 }

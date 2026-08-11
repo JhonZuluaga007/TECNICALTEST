@@ -38,19 +38,19 @@ linked_*.ds
 unlinked.ds
 unlinked_spec.ds
 
-# Coverage (Fase 9: gate de cobertura en CI)
+# Coverage (Phase 9: coverage gate in CI)
 coverage/
 lcov.info
 
-# FVM — se commitea la config (.fvm/fvm_config.json / .fvmrc) pero NUNCA el SDK
+# FVM: the config (.fvm/fvm_config.json / .fvmrc) is committed, the SDK NEVER is
 .fvm/flutter_sdk
 .fvm/versions/
 
-# Secretos: --dart-define-from-file (Fase 4)
+# Secrets: --dart-define-from-file (Phase 4)
 env/*.json
 !env/example.json
 
-# Golden tests fallidos (Fase 8)
+# Failed golden tests (Phase 8)
 **/failures/
 
 # Symbolication / obfuscation
@@ -58,7 +58,7 @@ app.*.symbols
 app.*.map.json
 
 # Android related
-# Salidas de build por variante (estan en el template oficial de Flutter).
+# Per-variant build outputs (present in the official Flutter template).
 /android/app/debug
 /android/app/profile
 /android/app/release

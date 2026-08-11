@@ -1,15 +1,14 @@
-import 'dart:convert';
-
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/weight_cat_entity.dart';
 
-List<CatBreedModel> catBreedModelFromMap(String str) =>
-    List<CatBreedModel>.from(
-      json.decode(str).map((x) => CatBreedModel.fromMap(x)),
-    );
-
+/// Data model for TheCatAPI.
+///
+/// Phase 2: `fromMap` now takes `urlImage` instead of leaving it as `""` for the
+/// datasource to overwrite later, which is what lets the entity be immutable.
+/// Phase 4 kills the `Model extends Entity` inheritance in favour of an explicit
+/// mapper.
 class CatBreedModel extends CatBreedEntity {
-  CatBreedModel({
+  const CatBreedModel({
     required WeightModel super.weight,
     required super.id,
     required super.name,
@@ -52,9 +51,17 @@ class CatBreedModel extends CatBreedEntity {
     required super.bidability,
   });
 
-  factory CatBreedModel.fromMap(Map<String, dynamic> json) => CatBreedModel(
-    urlImage: "",
-    weight: WeightModel.fromMap(json["weight"]),
+  factory CatBreedModel.fromMap(
+    Map<String, dynamic> json, {
+    required String urlImage,
+  }) => CatBreedModel(
+    urlImage: urlImage,
+    // `weight` was the only field without a null guard: a payload missing that
+    // key threw `TypeError` when passing `null` to a `Map<String, dynamic>`
+    // parameter.
+    weight: json["weight"] == null
+        ? const WeightModel.empty()
+        : WeightModel.fromMap(json["weight"] as Map<String, dynamic>),
     id: json["id"] ?? "",
     name: json["name"] ?? "",
     cfaUrl: json["cfa_url"] ?? "",
@@ -97,8 +104,14 @@ class CatBreedModel extends CatBreedEntity {
 }
 
 class WeightModel extends WeightEntity {
-  WeightModel({required super.imperial, required super.metric});
+  const WeightModel({required super.imperial, required super.metric});
 
-  factory WeightModel.fromMap(Map<String, dynamic> json) =>
-      WeightModel(imperial: json["imperial"], metric: json["metric"]);
+  const WeightModel.empty() : this(imperial: "", metric: "");
+
+  /// `imperial` and `metric` were unchecked: they were the only two dynamic
+  /// casts into a non-nullable `String` in the entire mapping.
+  factory WeightModel.fromMap(Map<String, dynamic> json) => WeightModel(
+    imperial: (json["imperial"] as String?) ?? "",
+    metric: (json["metric"] as String?) ?? "",
+  );
 }

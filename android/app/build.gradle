@@ -1,7 +1,7 @@
 plugins {
     id "com.android.application"
     id "kotlin-android"
-    // El Flutter Gradle Plugin debe aplicarse después de los plugins de Android y Kotlin.
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin plugins.
     id "dev.flutter.flutter-gradle-plugin"
 }
 
@@ -25,8 +25,8 @@ android {
 
     buildTypes {
         release {
-            // TODO(fase 9): signing config propio para release.
-            // De momento firma con las debug keys para que `flutter run --release` funcione.
+            // TODO(phase 9): a real signing config for release builds.
+            // For now it signs with the debug keys so `flutter run --release` works.
             signingConfig = signingConfigs.debug
         }
     }

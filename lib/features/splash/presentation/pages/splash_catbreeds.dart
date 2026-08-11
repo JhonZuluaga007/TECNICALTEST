@@ -17,20 +17,27 @@ class SplashCatBreeds extends StatefulWidget {
 }
 
 class _SplashCatBreedsState extends State<SplashCatBreeds> {
-  Timer? timer;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    startTimer();
+    // The `Timer? timer` field existed but was NEVER assigned: `startTimer()`
+    // was pointlessly `async` and returned the `Timer` inside a `Future` nobody
+    // read. So the timer stayed alive with no reference, impossible to cancel.
+    _timer = Timer(const Duration(seconds: 5), _goToHome);
   }
 
-  Future<Timer> startTimer() async {
-    var duration = const Duration(seconds: 5);
-    return Timer(duration, route);
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
-  void route() {
+  void _goToHome() {
+    // Without this guard, leaving the splash before the 5 s elapsed called
+    // `goNamed` on an already-unmounted `State.context`.
+    if (!mounted) return;
     context.goNamed(homePage);
   }
 
