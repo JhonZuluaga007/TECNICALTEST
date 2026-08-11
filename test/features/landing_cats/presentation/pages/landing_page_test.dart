@@ -1,14 +1,15 @@
 import 'dart:async';
 
-import 'package:either_dart/either.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
-import 'package:tecnical_test_pragma/core/config/helpers/errors/invalid_data.dart';
+import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
+import 'package:tecnical_test_pragma/core/utils/cats_result.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/pages/detail_cat_page.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/pages/landing_page.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/landing_status_views.dart';
 
 import '../../../../helpers/builders.dart';
 import '../../../../helpers/ignore_overflow_errors.dart';
@@ -30,9 +31,13 @@ void main() {
     ).take(take).toList();
     when(
       () => useCase.getAllCatsCall(),
-    ).thenAnswer((_) async => Right<InvalidData, List<CatBreedEntity>>(breeds));
+    ).thenAnswer((_) async => Ok<List<CatBreedEntity>>(breeds));
     return breeds;
   }
+
+  void stubFailure([CatsFailure failure = const NetworkFailure()]) => when(
+    () => useCase.getAllCatsCall(),
+  ).thenAnswer((_) async => Err<List<CatBreedEntity>>(failure));
 
   group('LandingPage', () {
     testWidgets('dispatches AllCatsEvent on mount', (tester) async {
@@ -79,8 +84,10 @@ void main() {
       expect(find.text(breeds.first.name), findsOneWidget);
     });
 
-    testWidgets('shows the spinner while loading', (tester) async {
-      final completer = Completer<Either<InvalidData, List<CatBreedEntity>>>();
+    testWidgets('shows the loading view while the request is in flight', (
+      tester,
+    ) async {
+      final completer = Completer<CatsResult<List<CatBreedEntity>>>();
       when(() => useCase.getAllCatsCall()).thenAnswer((_) => completer.future);
 
       await tester.pumpAppWith(
@@ -89,23 +96,24 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(CatsLoadingView), findsOneWidget);
       expect(find.byType(CardCatWidget), findsNothing);
+      expect(find.byType(CatsErrorView), findsNothing);
 
       // Complete the completer so no pending work is left behind.
-      completer.complete(const Right<InvalidData, List<CatBreedEntity>>([]));
+      completer.complete(const Ok<List<CatBreedEntity>>([]));
       await tester.pumpAndSettle();
     });
 
-    testWidgets('an empty list renders no cards and does not throw', (
+    testWidgets('an empty result shows the empty view, not a blank screen', (
       tester,
     ) async {
-      // Regression test for the four `state.listAllCats![index]` force-unwraps:
-      // with non-nullable lists and a correct `itemCount`, the empty case is
-      // harmless.
-      when(() => useCase.getAllCatsCall()).thenAnswer(
-        (_) async => const Right<InvalidData, List<CatBreedEntity>>([]),
-      );
+      // Phase 3 gave this case its own branch. It used to render an empty
+      // `ListView`, which looked identical to a broken app. The list pattern
+      // `CatsLoaded(breeds: [])` is what distinguishes it.
+      when(
+        () => useCase.getAllCatsCall(),
+      ).thenAnswer((_) async => const Ok<List<CatBreedEntity>>([]));
 
       await tester.pumpAppWith(
         const LandingPage(),
@@ -113,30 +121,104 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(find.byType(CatsEmptyView), findsOneWidget);
       expect(find.byType(CardCatWidget), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('on failure it keeps showing the spinner', (tester) async {
-      // CHARACTERIZATION, not approval: there is no error branch anywhere today,
-      // so an API failure leaves an infinite spinner. Phase 3 introduces the
-      // exhaustive `switch` over sealed states that FORCES writing the error
-      // view, and this test has to change there. It is pinned now so that diff is
-      // visible.
-      when(() => useCase.getAllCatsCall()).thenAnswer(
-        (_) async => const Left<InvalidData, List<CatBreedEntity>>(
-          InvalidData(message: 'boom', statusCode: 500),
-        ),
-      );
+    testWidgets('a failed request shows the error view, not an endless spinner', (
+      tester,
+    ) async {
+      // THE test of this phase. It replaces Phase 2's characterization test
+      // ('on failure it keeps showing the spinner'), which pinned the old
+      // behavior precisely so this diff would be visible: the UI did
+      // `status is SubmissionSuccess ? list : spinner`, an `is` check with an
+      // implicit `else`, and an API error left the user staring at an animation
+      // forever with no way out.
+      stubFailure(const ServerFailure(statusCode: 500));
 
       await tester.pumpAppWith(
         const LandingPage(),
         bloc: tester.buildBloc(useCase),
       );
-      await tester.pump();
+      await tester.pumpAndSettle();
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(CatsErrorView), findsOneWidget);
+      expect(find.byType(CatsLoadingView), findsNothing);
       expect(find.byType(CardCatWidget), findsNothing);
+    });
+
+    testWidgets('the error view shows the message for that specific failure', (
+      tester,
+    ) async {
+      stubFailure(const ServerFailure(statusCode: 401));
+
+      await tester.pumpAppWith(
+        const LandingPage(),
+        bloc: tester.buildBloc(useCase),
+      );
+      await tester.pumpAndSettle();
+
+      // The typed failure travels all the way from the data layer to the copy.
+      expect(find.textContaining('authenticate'), findsOneWidget);
+    });
+
+    testWidgets('tapping Retry re-dispatches AllCatsEvent', (tester) async {
+      stubFailure();
+
+      await tester.pumpAppWith(
+        const LandingPage(),
+        bloc: tester.buildBloc(useCase),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+
+      // Twice: once from `initState`, once from the retry.
+      verify(() => useCase.getAllCatsCall()).called(2);
+    });
+
+    testWidgets('a successful retry replaces the error view with the list', (
+      tester,
+    ) async {
+      ignoreOverflowErrors();
+      stubFailure();
+
+      await tester.pumpAppWith(
+        const LandingPage(),
+        bloc: tester.buildBloc(useCase),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(CatsErrorView), findsOneWidget);
+
+      stubSuccess();
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CatsErrorView), findsNothing);
+      expect(find.byType(CardCatWidget), findsWidgets);
+    });
+
+    testWidgets('the search icon is reachable while the error view is shown', (
+      tester,
+    ) async {
+      // The app bar reads the breed list off a variant that only exists when
+      // loaded, so it has to cope with not having one. Before Phase 3 the field
+      // was always present, and this is the case that could have regressed into a
+      // crash.
+      stubFailure();
+
+      await tester.pumpAppWith(
+        const LandingPage(),
+        bloc: tester.buildBloc(useCase),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.search_rounded));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('unmounting it disposes the ScrollController', (tester) async {

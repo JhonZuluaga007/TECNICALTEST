@@ -19,7 +19,7 @@ This repository is under **active modernization**: it started on Flutter 3.16.7 
 | 0 | Hygiene, baseline and `.gitignore` | ✅ Done |
 | 1 | Toolchain 3.44.9 with fvm (no refactors) | ✅ Done |
 | 2 | Testability seams + regression suite + bug fixes | ✅ Done |
-| 3 | Dart 3: sealed classes + pattern matching | ⬜ Pending |
+| 3 | Dart 3: sealed classes + pattern matching | ✅ Done |
 | 4 | Data layer: freezed, immutable entity, N+1, secrets | ⬜ Pending |
 | 5 | DI: kiwi → get_it + injectable | ⬜ Pending |
 | 6 | Persistence: hydrated_bloc + TTL cache | ⬜ Pending |
@@ -40,8 +40,9 @@ lib/
 ├── core/                      # Cross-cutting: shared widgets, helpers, DI, theme
 │   ├── common_widgets/        # Reusable components
 │   ├── config/                # Helpers, endpoints, responsive, theme
+│   ├── errors/                # `sealed class CatsFailure` and its variants
 │   ├── injector/              # Dependency injection (kiwi → get_it in Phase 5)
-│   └── utils/                 # Pure helpers (bounded-concurrency map)
+│   └── utils/                 # Pure helpers (bounded-concurrency map, CatsResult)
 ├── features/
 │   ├── splash/
 │   ├── landing_cats/
@@ -52,9 +53,9 @@ lib/
 └── routers/                   # go_router
 ```
 
-- **State:** BLoC (`flutter_bloc`), with the use case injected through the constructor
+- **State:** BLoC (`flutter_bloc`), a **`sealed` state hierarchy** consumed by an exhaustive `switch`, with the use case injected through the constructor
 - **Navigation:** `go_router`, declarative nested routes
-- **Errors:** `Either<Failure, Success>` (`either_dart`)
+- **Errors:** `sealed class CatsFailure` carried by a `sealed class CatsResult<T>` (`Ok` / `Err`) — no `Either` package
 - **DI:** `kiwi`, hand-written registrations (migrates to `get_it` + `injectable` in Phase 5)
 - **Tests:** `flutter_test` + `bloc_test` + `mocktail`, plus `MockClient` from `package:http/testing.dart` at the HTTP boundary
 
@@ -91,7 +92,7 @@ fvm flutter analyze
 fvm dart format .
 ```
 
-> There is no codegen step: `build_runner` was removed in Phase 2 (see the changelog). It returns in Phase 3/4 with `freezed`.
+> There is no codegen step: `build_runner` was removed in Phase 2 (see the changelog). It returns in Phase 4 with `freezed`, which will regenerate the sealed classes Phase 3 wrote by hand.
 
 ### JDK for Android
 
@@ -146,7 +147,7 @@ awk -F: '/^SF:/{f=$2} /^LF:/{lf=$2} /^LH:/{lh=$2} /^end_of_record/{printf "%6.1f
 
 **Two zone gotchas, both the same shape, both encapsulated in helpers:**
 
-- **`PumpApp.buildBloc` — build the bloc inside the `testWidgets` body, never in a `setUp`.** `setUp` runs outside `testWidgets`' `FakeAsync` zone, so the bloc's internal microtasks stay bound to the real zone, `pump`/`pumpAndSettle` never drain them, the state stays stuck on `FormSubmitting`, and `pumpAndSettle` ends in *timed out*.
+- **`PumpApp.buildBloc` — build the bloc inside the `testWidgets` body, never in a `setUp`.** `setUp` runs outside `testWidgets`' `FakeAsync` zone, so the bloc's internal microtasks stay bound to the real zone, `pump`/`pumpAndSettle` never drain them, the state stays stuck on `CatsLoading`, and `pumpAndSettle` ends in *timed out*.
 - **`ignoreOverflowErrors()` — same rule**, because `testWidgets` installs its own `FlutterError.onError` after the `setUp` callbacks run.
 
 On that overflow helper — measured, not assumed: under `flutter test` there is no Acme font, so Flutter uses its test font, where **every glyph is a full em square**. `Text('Intelligence:', fontSize: 20)` measures exactly **260 px** in tests (13 chars × 20) against roughly 130 px with real Acme, which overflows the `SizedBox(width: 190.w)` that `CardCatWidget` gives the nested `BreedCharacteristicWidget`. **This is a font-metrics artifact, not a layout bug — the app does not overflow.** Phase 7 bundles the font and Phase 8 audits layout for real; the helper should disappear there.
@@ -225,7 +226,7 @@ Adding `bloc_test` **fails dependency resolution** while the generator is in the
 | `test 1.31.0` requires `analyzer >=8.0.0 <13.0.0` | — |
 | `kiwi_generator 4.2.1` requires `analyzer ^6.0.0` | intersection is **empty** |
 
-So `kiwi_generator` and `build_runner` were removed and the registrations were hand-written: `injector.g.dart` was 26 trivial lines, and the `@Register` annotation lives in `kiwi` (not in the generator), so nothing broke at the import level. **`kiwi` stays.** `build_runner` returns in Phase 3/4 for `freezed`, with `source_gen ^2` and a modern analyzer — a bill that was going to be paid there anyway.
+So `kiwi_generator` and `build_runner` were removed and the registrations were hand-written: `injector.g.dart` was 26 trivial lines, and the `@Register` annotation lives in `kiwi` (not in the generator), so nothing broke at the import level. **`kiwi` stays.** `build_runner` returns in Phase 4 for `freezed`, with `source_gen ^2` and a modern analyzer — a bill that was going to be paid there anyway.
 
 Along the way the `Injector` gained three things the tests needed: `setup()` now clears before registering (kiwi **throws** `KiwiError` on duplicate registration, so a second `setup()` in the same isolate crashed — which is exactly what happens with more than one test file), a `reset()` for isolation, and `http.Client` registered as a **singleton** instead of every datasource resolve building its own connection pool. That singleton is also the seam that makes `test/app_test.dart` possible.
 
@@ -339,3 +340,102 @@ extracting these strings into ARB files; it just no longer has two languages to
 reconcile first.
 
 The `api-key` header name is still the wrong one — TheCatAPI expects `x-api-key`, so these requests **were never authenticated** — but it was hoisted into `Endpoints.authHeader` so Phase 4's `--dart-define-from-file` migration is a one-line change.
+
+---
+
+### Phase 3 — Dart 3: sealed classes and pattern matching
+
+**Result: 140 tests across 20 files, `analyze` clean, 96.9% of reached lines covered, and one less dependency.**
+
+The headline change is not a refactor, it is a bug that could not be fixed without one: **an API failure used to leave an infinite spinner.** Phase 2 pinned that with a characterization test precisely so this phase's diff would show it. And it was not hypothetical — the API key returns 401, so the infinite spinner was the app's real behavior.
+
+Nothing forced an error branch to exist. The UI read:
+
+```dart
+state.formSubmissionStatusService is SubmissionSuccess ? list : spinner
+```
+
+An `is` check with an implicit `else`. `FormSubmissionStatus` was an ordinary `abstract class`, so the compiler had no way to know a case was missing.
+
+#### Illegal states are now unrepresentable
+
+| Before | After |
+|---|---|
+| One `LandingCatsState` with three always-present fields | `sealed class LandingCatsState` with `CatsInitial` / `CatsLoading` / `CatsLoaded` / `CatsError` |
+| `listAllCats` readable even when the request failed | `breeds` exists only on `CatsLoaded`, `failure` only on `CatsError` |
+| `InvalidData`: every cause flattened into one interpolated `String` | `sealed class CatsFailure`: `NetworkFailure`, `TimeoutFailure`, `ServerFailure(statusCode)`, `UnexpectedResponseFailure`, `UnknownFailure` |
+| `SubmissionFailed(exception: Exception(error.message))` — type discarded at the domain boundary | the failure reaches the widget **typed** |
+| `Either.fold` with two closures the compiler cannot check | `switch` expression over a sealed type |
+
+The consequence that matters: **the error branch can no longer be deleted.** Removing the `CatsError` case from `landing_page.dart` is a compile error (`non_exhaustive_switch`), not a silent regression. That is verified in the exit criteria below.
+
+#### `either_dart` is gone
+
+Replaced by `sealed class CatsResult<T>` with `Ok` / `Err`, in `lib/core/utils/cats_result.dart`. One type parameter, not two: the failure channel is always `CatsFailure`.
+
+Besides removing a dependency, it removes a trap Phase 2 had to document in every repository test: **`either_dart` delegates `==` to its payload, so an `Either` holding a `List` compares by identity.** `expect(result, Right(list))` passed or failed for the wrong reason. `CatsResult` deliberately defines no `==` at all, so tests assert on the variant and then on the contents — there is no misleading comparison available to write.
+
+#### Errors are classified, not stringified
+
+`LandingCatsDataSource` now maps causes to variants. One detail worth recording, because getting it wrong means `NetworkFailure` never fires in production: transport failures are classified with **`http.ClientException`, not `SocketException`**.
+
+| Fact | Source |
+|---|---|
+| `IOClient.send` catches `SocketException` and rethrows `_ClientSocketException` | `http 1.6.0`, `io_client.dart:226` |
+| `_ClientSocketException extends ClientException implements SocketException` | `io_client.dart:27` |
+| On web, `_toClientException` normalizes everything to `ClientException` | `browser_client.dart:148` |
+
+So one clause covers every platform, and `lib/` never imports `dart:io` — which would have broken the web build. A consequence for the suite: `MockClient` does **not** wrap what its handler throws, so the two tests that threw a raw `SocketException` now throw `http.ClientException`, exactly as the real client does. The tests got *more* faithful, not less.
+
+#### The repository became a total function
+
+It used to catch `on InvalidData` only, so any other error escaped the result channel entirely, the bloc's `fold` never ran, and the UI sat on its spinner. There is now a catch-all mapping to `Err(UnknownFailure)`. **Deliberate behavior change**, and it replaces Phase 2's characterization test.
+
+#### Three new views
+
+`landing_status_views.dart` holds `CatsLoadingView`, `CatsEmptyView` and `CatsErrorView`. They are public and bloc-free (`CatsErrorView` takes an `onRetry` callback), so they pump in isolation and widget tests can match `find.byType(CatsErrorView)` instead of copy that Phase 7 will move.
+
+`CatsEmptyView` is new behavior: a successful request with zero breeds used to render an empty `ListView`, i.e. a blank screen indistinguishable from a broken app. The branch that catches it is a **list pattern** — `CatsLoaded(breeds: [])` — placed before the general case.
+
+Failure-to-copy mapping lives in the presentation layer (`messageFor`), with a **guard clause** so 401/403 read as an authentication problem rather than "our servers are down":
+
+```dart
+ServerFailure(:final statusCode) when statusCode == 401 || statusCode == 403 =>
+  'Could not authenticate with the cat service.',
+```
+
+#### The risk this phase actually carried
+
+`searchHistory` is orthogonal to the fetch lifecycle and has to survive every transition. `copyWith` used to carry it along for free; with a sealed hierarchy every `emit` builds a fresh variant and must pass it explicitly. Dropping it in **one** branch would wipe the feature silently — the exact class of bug Phase 2 spent its time making loud.
+
+Two design-level countermeasures, not discipline:
+
+- **`searchHistory` is `required` on the sealed base with no default**, so forgetting it is a compile error.
+- **Every variant lists `searchHistory` in its `props`.** Had `CatsLoaded.props` been just `[breeds]`, adding a search term while loaded would produce an *equal* state, `emit` would drop it, and the history would die in the only state where the search screen is reachable at all.
+
+Both are covered by dedicated tests, and both were confirmed by reverting them.
+
+#### Exit criteria
+
+- `fvm flutter analyze` → **No issues found!**
+- `fvm dart format --set-exit-if-changed .` → clean
+- `fvm flutter test` → **140 tests passing** (118 before)
+- Coverage: **588/607 = 96.9%** of reached lines, same "of reached lines, not of the project" caveat as Phase 2. No gate; Phase 9 owns that.
+- **8/8 reversions detected.** Each behavior change was reverted and its test confirmed to fail: the two `searchHistory` carries, `CatsLoaded.props`, the repository catch-all, the `ClientException` classification, the payload-shape check, and the empty-list branch — plus deleting the error branch, which does not compile.
+- `test/app_test.dart` passed **unchanged**, which is the evidence that DI, router, bloc and datasource are still wired to each other.
+- **A free end-to-end check:** `fvm flutter run` used to show a spinner forever, because the hardcoded key returns 401. It now shows `CatsErrorView` with *"Could not authenticate with the cat service."* and a working Retry button — no key change, nothing simulated.
+
+#### Honest note on one change that is not a fix
+
+`_imageUrlFor` moved from `(json.decode(body) as Map)["url"] as String?` to the map pattern `{'url': final String url}`. This was **verified not to be a behavior change**: the method's blanket `catch (_) => ""` already swallowed the `TypeError`. It is a precision improvement — the normal path no longer throws and catches an exception to express "no usable url" — and its test documents the behavior without discriminating against the old code.
+
+#### Deliberately not done
+
+| Left alone | Owner |
+|---|---|
+| `freezed` / `json_serializable`; these hand-written sealed classes get regenerated there | 4 |
+| The N+1 at its root (one request before first paint), the API key, the wrong `api-key` header name, retry with backoff | 4 |
+| `equatable` stays; `freezed` replaces it | 4 |
+| Persisting `searchHistory`, TTL cache, the `initState` refetch. Phase 6 adds a state variant, and the `switch` statements here will *require* handling it — by design | 6 |
+| Moving `messageFor`'s strings into ARB files | 7 |
+| Promoting the three views to `core/common_widgets/` if a second consumer appears; `CatsFailure` logging; `analysis_options.yaml` hardening | 9 |

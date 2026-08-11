@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:tecnical_test_pragma/core/config/helpers/form_submission_status.dart';
+import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
+import 'package:tecnical_test_pragma/core/utils/cats_result.dart';
 
 import '../../domain/entities/catbreed_entity.dart';
 import '../../domain/use_cases/get_all_cats_use_case.dart';
@@ -17,7 +18,7 @@ class LandingCatsBloc extends Bloc<LandingCatsEvent, LandingCatsState> {
   /// Resolution now lives in the composition root (`main.dart`), and this file no
   /// longer imports `core/injector/injector.dart`.
   LandingCatsBloc({required this.getAllCatsUseCase})
-    : super(const LandingCatsState()) {
+    : super(const CatsInitial(searchHistory: [])) {
     on<AllCatsEvent>(_onAllCats);
     on<AddNameAlreadySearchedEvent>(_onAddNameAlreadySearched);
   }
@@ -28,25 +29,25 @@ class LandingCatsBloc extends Bloc<LandingCatsEvent, LandingCatsState> {
     AllCatsEvent event,
     Emitter<LandingCatsState> emit,
   ) async {
-    emit(state.copyWith(formSubmissionStatusService: const FormSubmitting()));
+    emit(CatsLoading(searchHistory: state.searchHistory));
 
-    final getAllCatsResponse = await getAllCatsUseCase.getAllCatsCall();
+    final result = await getAllCatsUseCase.getAllCatsCall();
 
-    getAllCatsResponse.fold(
-      (error) => emit(
-        state.copyWith(
-          formSubmissionStatusService: SubmissionFailed(
-            exception: Exception(error.message),
-          ),
-        ),
+    // Phase 3: an exhaustive `switch` expression instead of `Either.fold` with two
+    // closures. The compiler now guarantees both outcomes are handled, and the
+    // failure arrives **typed** at the UI instead of being flattened into
+    // `Exception(error.message)`, which is what lets the error view show a
+    // different message per cause.
+    emit(switch (result) {
+      Ok(:final value) => CatsLoaded(
+        breeds: value,
+        searchHistory: state.searchHistory,
       ),
-      (response) => emit(
-        state.copyWith(
-          formSubmissionStatusService: const SubmissionSuccess(),
-          listAllCats: response,
-        ),
+      Err(:final failure) => CatsError(
+        failure: failure,
+        searchHistory: state.searchHistory,
       ),
-    );
+    });
   }
 
   /// Trimming and de-duplicating the history used to live in the search
@@ -57,15 +58,25 @@ class LandingCatsBloc extends Bloc<LandingCatsEvent, LandingCatsState> {
     Emitter<LandingCatsState> emit,
   ) {
     final name = event.name.trim();
-    if (name.isEmpty || state.namesAlreadySearched.contains(name)) return;
+    if (name.isEmpty || state.searchHistory.contains(name)) return;
 
-    emit(
-      state.copyWith(
-        namesAlreadySearched: List.unmodifiable([
-          ...state.namesAlreadySearched,
-          name,
-        ]),
+    final history = List<String>.unmodifiable([...state.searchHistory, name]);
+
+    // "The same variant, with a different history." More verbose than the old
+    // `copyWith`, and better: when Phase 6 adds a variant for the hydrated/
+    // refreshing case, the compiler will refuse to build until this switch
+    // accounts for it.
+    emit(switch (state) {
+      CatsInitial() => CatsInitial(searchHistory: history),
+      CatsLoading() => CatsLoading(searchHistory: history),
+      CatsLoaded(:final breeds) => CatsLoaded(
+        breeds: breeds,
+        searchHistory: history,
       ),
-    );
+      CatsError(:final failure) => CatsError(
+        failure: failure,
+        searchHistory: history,
+      ),
+    });
   }
 }

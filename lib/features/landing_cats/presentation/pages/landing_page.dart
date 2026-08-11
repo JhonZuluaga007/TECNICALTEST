@@ -5,8 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/my_app_scaffold.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
-import 'package:tecnical_test_pragma/core/config/helpers/form_submission_status.dart';
 import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/landing_status_views.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/search_delegate_all_catbreeds.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
 import 'package:tecnical_test_pragma/routers/routers.dart';
@@ -42,6 +43,13 @@ class _LandingPageState extends State<LandingPage> {
     final wColor = AppCatsColor();
     return BlocBuilder<LandingCatsBloc, LandingCatsState>(
       builder: (context, state) {
+        // The breed list now exists on exactly one variant, so the app bar has to
+        // ask for it rather than assume it is always there.
+        final breeds = switch (state) {
+          CatsLoaded(:final breeds) => breeds,
+          _ => const <CatBreedEntity>[],
+        };
+
         return MyAppScaffold(
           paddingColumn: EdgeInsets.symmetric(horizontal: 12.w),
           appBar: AppBar(
@@ -82,7 +90,7 @@ class _LandingPageState extends State<LandingPage> {
                             showSearch(
                               context: context,
                               delegate: SearchDelegateAllCatbreeds(
-                                listCatBreedEntity: state.listAllCats,
+                                listCatBreedEntity: breeds,
                               ),
                             );
                           },
@@ -98,36 +106,54 @@ class _LandingPageState extends State<LandingPage> {
           children: [
             SizedBox(height: 12.h),
             Expanded(
-              child: state.formSubmissionStatusService is SubmissionSuccess
-                  ? Scrollbar(
-                      controller: scrollController,
-                      child: ListView.separated(
-                        controller: scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        itemCount: state.listAllCats.length,
-                        itemBuilder: (context, index) {
-                          final breed = state.listAllCats[index];
-                          return CardCatWidget(
-                            nameCat: breed.name,
-                            imageUrlCat: breed.urlImage,
-                            countryOrigin: breed.origin,
-                            intelligent: breed.intelligence,
-                            onPressed: () {
-                              context.goNamed(detailPage, extra: breed);
-                            },
-                          );
-                        },
-                        separatorBuilder: (BuildContext context, int index) =>
-                            SizedBox(height: 12.h),
-                      ),
-                    )
-                  : Center(
-                      child: CircularProgressIndicator(color: wColor.black),
-                    ),
+              // Phase 3: an exhaustive `switch` over the sealed state replaces
+              // `state.formSubmissionStatusService is SubmissionSuccess ? list :
+              // spinner`. That ternary had an implicit `else`, which is how an API
+              // failure ended up showing a spinner forever — nothing in the type
+              // system asked for an error branch. Now the compiler does.
+              //
+              // Case order matters: `CatsLoaded(breeds: [])` is a list pattern
+              // matching a strict subset, so it has to come before the general
+              // `CatsLoaded`, which stays reachable.
+              child: switch (state) {
+                CatsInitial() || CatsLoading() => const CatsLoadingView(),
+                CatsLoaded(breeds: []) => const CatsEmptyView(),
+                CatsLoaded(:final breeds) => _breedList(context, breeds),
+                CatsError(:final failure) => CatsErrorView(
+                  failure: failure,
+                  onRetry: () =>
+                      context.read<LandingCatsBloc>().add(const AllCatsEvent()),
+                ),
+              },
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _breedList(BuildContext context, List<CatBreedEntity> breeds) {
+    return Scrollbar(
+      controller: scrollController,
+      child: ListView.separated(
+        controller: scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: breeds.length,
+        itemBuilder: (context, index) {
+          final breed = breeds[index];
+          return CardCatWidget(
+            nameCat: breed.name,
+            imageUrlCat: breed.urlImage,
+            countryOrigin: breed.origin,
+            intelligent: breed.intelligence,
+            onPressed: () {
+              context.goNamed(detailPage, extra: breed);
+            },
+          );
+        },
+        separatorBuilder: (BuildContext context, int index) =>
+            SizedBox(height: 12.h),
+      ),
     );
   }
 }

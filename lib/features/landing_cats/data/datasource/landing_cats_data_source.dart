@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
 import 'package:tecnical_test_pragma/core/config/helpers/endpoints.dart';
-import 'package:tecnical_test_pragma/core/config/helpers/errors/invalid_data.dart';
+import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
 import 'package:tecnical_test_pragma/core/utils/map_with_concurrency.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/data/models/catbreed_model.dart';
 
@@ -35,15 +36,20 @@ class LandingCatsDataSource {
           .timeout(timeout);
 
       if (response.statusCode != 200) {
-        throw InvalidData(
-          message: "Service request failed",
-          statusCode: response.statusCode,
-        );
+        throw ServerFailure(statusCode: response.statusCode);
       }
       if (response.body.isEmpty) return const [];
 
-      final raw = (json.decode(response.body) as List)
-          .cast<Map<String, dynamic>>();
+      final decoded = json.decode(response.body);
+      // Phase 3: the shape is checked instead of blind-cast. `as List` on a
+      // valid-but-wrong payload (an object, a number) threw a `TypeError`, which
+      // then got stringified into a message nobody could act on.
+      if (decoded is! List) {
+        throw const UnexpectedResponseFailure(
+          detail: 'Expected a JSON array of breeds',
+        );
+      }
+      final raw = decoded.cast<Map<String, dynamic>>();
 
       // `/breeds` carries no images, so each one has to be resolved separately.
       // Bounded concurrency instead of sequential: 67 breeds go from 67 serial
@@ -67,15 +73,30 @@ class LandingCatsDataSource {
         for (var i = 0; i < raw.length; i++)
           CatBreedModel.fromMap(raw[i], urlImage: urls[i]),
       ];
-    } on InvalidData {
-      // Without this `rethrow` the `catch` below re-wrapped the `InvalidData`
-      // thrown above, and the message ended up as
+    } on CatsFailure {
+      // Without this `rethrow` the clauses below would re-wrap the failure thrown
+      // above. Phase 2 hit exactly that: the message became
       // "Service error: Instance of 'InvalidData'".
       rethrow;
+    } on TimeoutException {
+      throw const TimeoutFailure();
+    } on http.ClientException {
+      // NOT `on SocketException`: that lives in `dart:io` and importing it here
+      // would break the web build. It is also unnecessary — verified in
+      // http 1.6.0: `IOClient.send` catches `SocketException` and rethrows
+      // `_ClientSocketException extends ClientException` (io_client.dart:226),
+      // and on web `_toClientException` normalizes everything to
+      // `ClientException` (browser_client.dart:148). So this one clause covers
+      // transport failures on every platform.
+      throw const NetworkFailure();
+    } on FormatException catch (error) {
+      // A 200 with a body that is not JSON at all.
+      throw UnexpectedResponseFailure(detail: error.message);
+    } on TypeError catch (error) {
+      // A 200 with valid JSON whose fields are not the types the model expects.
+      throw UnexpectedResponseFailure(detail: '$error');
     } catch (error) {
-      // `response` is no longer in scope here: a transport failure has no HTTP
-      // status to report.
-      throw InvalidData(message: "Service error: $error", statusCode: null);
+      throw UnknownFailure(detail: '$error');
     }
   }
 
@@ -94,10 +115,16 @@ class LandingCatsDataSource {
           .timeout(timeout);
 
       if (response.statusCode != 200) return "";
-      final map = json.decode(response.body) as Map<String, dynamic>;
-      // Previously: `catBreedModel.urlImage = mapInfo["url"]`, an unchecked
-      // dynamic cast into a non-nullable `String`, while mutating the entity.
-      return (map["url"] as String?) ?? "";
+
+      // A map pattern, not a cast. Previously:
+      // `(json.decode(body) as Map<String, dynamic>)["url"] as String?`, which
+      // threw a `TypeError` when the body was not a map at all. The pattern
+      // simply does not match, and both "not a map" and "no usable url" collapse
+      // into the same harmless empty string.
+      return switch (json.decode(response.body)) {
+        {'url': final String url} => url,
+        _ => "",
+      };
     } catch (_) {
       return "";
     }
