@@ -108,9 +108,9 @@ class SearchDelegateAllCatbreeds extends SearchDelegate<List<CatBreedEntity>?> {
   Widget _searchHistory(BuildContext context) {
     return BlocBuilder<LandingCatsBloc, LandingCatsState>(
       buildWhen: (previous, current) =>
-          previous.namesAlreadySearched != current.namesAlreadySearched,
+          previous.searchHistory != current.searchHistory,
       builder: (context, state) {
-        final history = state.namesAlreadySearched;
+        final history = state.searchHistory;
         return ListView.builder(
           primary: false,
           itemCount: history.length,

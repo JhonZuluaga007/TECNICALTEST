@@ -1,10 +1,9 @@
-import 'package:either_dart/either.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:tecnical_test_pragma/core/config/helpers/errors/invalid_data.dart';
+import 'package:tecnical_test_pragma/core/utils/cats_result.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/pages/detail_cat_page.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/pages/landing_page.dart';
@@ -21,9 +20,9 @@ void main() {
 
   setUp(() {
     useCase = MockGetAllCatsUseCase();
-    when(() => useCase.getAllCatsCall()).thenAnswer(
-      (_) async => const Right<InvalidData, List<CatBreedEntity>>([]),
-    );
+    when(
+      () => useCase.getAllCatsCall(),
+    ).thenAnswer((_) async => const Ok<List<CatBreedEntity>>([]));
   });
 
   group('AppRoute.router', () {

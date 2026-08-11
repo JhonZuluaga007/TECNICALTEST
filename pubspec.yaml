@@ -31,7 +31,6 @@ environment:
 dependencies:
   flutter_screenutil: ^5.9.0
   http: ^1.1.0
-  either_dart: ^1.0.0
   flutter_bloc: ^9.1.1
   kiwi: ^5.0.1
   google_fonts: ^8.2.1

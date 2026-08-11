@@ -25,6 +25,12 @@ void main() {
     catBreedModel(id: 'aege', name: 'Aegean'),
   ];
 
+  /// The delegate only reads `searchHistory`, which lives on the sealed base, so
+  /// any variant would do. `CatsLoaded` is used because it is the state the app is
+  /// actually in when the search icon is tapped.
+  LandingCatsState loaded({List<String> history = const []}) =>
+      CatsLoaded(breeds: breeds, searchHistory: history);
+
   setUp(() {
     bloc = MockLandingCatsBloc();
     registerFallbackValue(const AllCatsEvent());
@@ -68,7 +74,7 @@ void main() {
       tester,
     ) async {
       // The history used to arrive via the constructor. It now comes from state.
-      seed(const LandingCatsState(namesAlreadySearched: ['siamese', 'aegean']));
+      seed(loaded(history: const ['siamese', 'aegean']));
 
       await openSearch(tester);
 
@@ -79,7 +85,7 @@ void main() {
 
     testWidgets('tapping a history entry applies that query', (tester) async {
       ignoreOverflowErrors();
-      seed(const LandingCatsState(namesAlreadySearched: ['siamese']));
+      seed(loaded(history: const ['siamese']));
 
       await openSearch(tester);
       await tester.tap(find.text('siamese'));
@@ -94,9 +100,9 @@ void main() {
       // constructor, so searching and then clearing the query does not show the
       // term just searched until the search is reopened.
       seed(
-        const LandingCatsState(namesAlreadySearched: ['siamese']),
-        then: const [
-          LandingCatsState(namesAlreadySearched: ['siamese', 'aegean']),
+        loaded(history: const ['siamese']),
+        then: [
+          loaded(history: const ['siamese', 'aegean']),
         ],
       );
 
@@ -110,7 +116,7 @@ void main() {
   group('SearchDelegateAllCatbreeds filtering', () {
     testWidgets('filters by name, case-insensitively', (tester) async {
       ignoreOverflowErrors();
-      seed(const LandingCatsState());
+      seed(loaded());
 
       await openSearch(tester);
       await tester.enterText(find.byType(TextField), 'aege');
@@ -122,7 +128,7 @@ void main() {
     });
 
     testWidgets('a query with no match renders no cards', (tester) async {
-      seed(const LandingCatsState());
+      seed(loaded());
 
       await openSearch(tester);
       await tester.enterText(find.byType(TextField), 'zzz');
@@ -137,7 +143,7 @@ void main() {
       tester,
     ) async {
       ignoreOverflowErrors();
-      seed(const LandingCatsState());
+      seed(loaded());
 
       await openSearch(tester);
       await tester.enterText(find.byType(TextField), 'aege');
@@ -159,7 +165,7 @@ void main() {
 
     testWidgets('trims the query before dispatching', (tester) async {
       ignoreOverflowErrors();
-      seed(const LandingCatsState());
+      seed(loaded());
 
       await openSearch(tester);
       await tester.enterText(find.byType(TextField), '  aege  ');
@@ -173,7 +179,7 @@ void main() {
     });
 
     testWidgets('a whitespace-only query dispatches nothing', (tester) async {
-      seed(const LandingCatsState());
+      seed(loaded());
 
       await openSearch(tester);
       await tester.enterText(find.byType(TextField), '   ');
@@ -189,10 +195,10 @@ void main() {
     ) async {
       // The highest-value test in this file. Fails before Phase 2: the delegate
       // did `filterNamesSearched.add(query)` on the SAME list instance living in
-      // `state.namesAlreadySearched`.
+      // `state.searchHistory`.
       ignoreOverflowErrors();
-      final historial = ['siamese'];
-      seed(LandingCatsState(namesAlreadySearched: historial));
+      final stateHistory = ['siamese'];
+      seed(loaded(history: stateHistory));
 
       await openSearch(tester);
       await tester.enterText(find.byType(TextField), 'aege');
@@ -200,7 +206,7 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
 
-      expect(historial, ['siamese']);
+      expect(stateHistory, ['siamese']);
     });
   });
 
@@ -215,7 +221,7 @@ void main() {
       // no controller gives each list its own position and stops them from going
       // back to sharing the `ModalRoute`'s.
       ignoreOverflowErrors();
-      seed(const LandingCatsState());
+      seed(loaded());
 
       await openSearch(tester);
       await tester.enterText(find.byType(TextField), 'a');

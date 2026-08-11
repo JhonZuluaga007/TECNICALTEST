@@ -1,8 +1,8 @@
-import 'package:either_dart/either.dart';
+import 'package:tecnical_test_pragma/core/utils/cats_result.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
 
-import '../../../../core/config/helpers/errors/invalid_data.dart';
-
 abstract class LandingCatsRepository {
-  Future<Either<InvalidData, List<CatBreedEntity>>> getAllCats();
+  /// Returns a [CatsResult] and never throws: see the catch-all in
+  /// `LandingCatsRepositoryImpl`.
+  Future<CatsResult<List<CatBreedEntity>>> getAllCats();
 }

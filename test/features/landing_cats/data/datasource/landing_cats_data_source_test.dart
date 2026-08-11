@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:tecnical_test_pragma/core/config/helpers/endpoints.dart';
-import 'package:tecnical_test_pragma/core/config/helpers/errors/invalid_data.dart';
+import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/data/datasource/landing_cats_data_source.dart';
 
 import '../../../../helpers/fixture_reader.dart';
@@ -104,10 +103,10 @@ void main() {
         reason: '/images/ is never requested without an id',
       );
       // And the 2 breeds with no image end up with an empty urlImage, not broken.
-      final sinImagen = result.where((b) => b.urlImage.isEmpty);
-      expect(sinImagen, hasLength(2));
+      final withoutImage = result.where((b) => b.urlImage.isEmpty);
+      expect(withoutImage, hasLength(2));
       expect(
-        sinImagen.map((b) => b.name),
+        withoutImage.map((b) => b.name),
         containsAll(['European Burmese', 'Malayan']),
       );
     });
@@ -165,58 +164,83 @@ void main() {
       expect(r.urls, hasLength(1));
     });
 
-    test('a status != 200 throws InvalidData WITHOUT double wrapping', () async {
-      // The general `catch` also caught the `throw InvalidData` from the status
-      // check and re-wrapped it, so the message ended up as
-      // "Service error: Instance of 'InvalidData'" and the original was lost.
-      // `on InvalidData { rethrow; }` fixes it.
+    test('a status != 200 throws ServerFailure carrying that status', () async {
+      // Phase 3: the status is a typed field now, not a substring of an
+      // interpolated message. It is what lets the UI tell 401 apart from 500.
+      //
+      // The `rethrow` this pins is still load-bearing: the general `catch` used to
+      // re-wrap the failure thrown by the status check, and the message became
+      // "Service error: Instance of 'InvalidData'".
       final r = routedClient(breedsFixture: 'breeds_3.json', breedsStatus: 500);
 
       await expectLater(
         LandingCatsDataSource(client: r.client).getAllCats(),
-        throwsA(
-          const InvalidData(message: 'Service request failed', statusCode: 500),
-        ),
+        throwsA(const ServerFailure(statusCode: 500)),
       );
     });
 
-    test('a malformed body throws InvalidData with no statusCode', () async {
+    test('a 401 throws ServerFailure(401), not a generic failure', () async {
+      // Not hypothetical: the API key hardcoded in `Endpoints` returns 401 today,
+      // so this is the failure the running app actually produces.
+      final r = routedClient(breedsFixture: 'breeds_3.json', breedsStatus: 401);
+
+      await expectLater(
+        LandingCatsDataSource(client: r.client).getAllCats(),
+        throwsA(const ServerFailure(statusCode: 401)),
+      );
+    });
+
+    test('a body that is not JSON throws UnexpectedResponseFailure', () async {
       final r = routedClient(
         breedsFixture: 'breeds_3.json',
-        breedsBody: 'no soy json',
+        breedsBody: 'not json at all',
       );
 
       await expectLater(
         LandingCatsDataSource(client: r.client).getAllCats(),
+        throwsA(isA<UnexpectedResponseFailure>()),
+      );
+    });
+
+    test('valid JSON that is not an array throws UnexpectedResponseFailure', () {
+      // Used to be `json.decode(body) as List`, i.e. a `TypeError` stringified
+      // into a message. Now the shape is checked explicitly.
+      final r = routedClient(
+        breedsFixture: 'breeds_3.json',
+        breedsBody: '{"message":"not an array"}',
+      );
+
+      return expectLater(
+        LandingCatsDataSource(client: r.client).getAllCats(),
         throwsA(
-          isA<InvalidData>()
-              .having((e) => e.statusCode, 'statusCode', isNull)
-              .having(
-                (e) => e.message,
-                'message',
-                startsWith('Service error:'),
-              ),
+          const UnexpectedResponseFailure(
+            detail: 'Expected a JSON array of breeds',
+          ),
         ),
       );
     });
 
-    test('a transport failure on /breeds is wrapped in InvalidData', () async {
-      // The first `http.get` used to sit OUTSIDE the `try`, so a
-      // `SocketException` escaped raw: the repository's `on InvalidData` did not
-      // catch it and the bloc's `fold` never ran.
+    test('a transport failure on /breeds throws NetworkFailure', () async {
+      // `http.ClientException`, NOT `SocketException`: that is what the real
+      // client throws. Verified in http 1.6.0 — `IOClient.send` catches
+      // `SocketException` and rethrows `_ClientSocketException extends
+      // ClientException` (io_client.dart:226), and on web everything is
+      // normalized to `ClientException`. Classifying on `SocketException` would
+      // also force a `dart:io` import into `lib/` and break the web build.
+      //
+      // `MockClient` does not wrap what its handler throws, so the exception has
+      // to be built here exactly as the real client would.
       final client = MockClient(
-        (_) async => throw const SocketException('no network'),
+        (_) async => throw http.ClientException('no network'),
       );
 
       await expectLater(
         LandingCatsDataSource(client: client).getAllCats(),
-        throwsA(
-          isA<InvalidData>().having((e) => e.statusCode, 'statusCode', isNull),
-        ),
+        throwsA(const NetworkFailure()),
       );
     });
 
-    test('a timeout on /breeds is wrapped in InvalidData', () async {
+    test('a timeout on /breeds throws TimeoutFailure', () async {
       final client = MockClient((_) async {
         await Future<void>.delayed(const Duration(milliseconds: 200));
         return jsonResponse(fixture('breeds_3.json'));
@@ -227,7 +251,26 @@ void main() {
           client: client,
           timeout: const Duration(milliseconds: 20),
         ).getAllCats(),
-        throwsA(isA<InvalidData>()),
+        throwsA(const TimeoutFailure()),
+      );
+    });
+
+    test('an unanticipated error throws UnknownFailure', () async {
+      // The catch-all branch. Its existence is what lets the repository be a
+      // total function.
+      final client = MockClient(
+        (_) async => throw StateError('very unexpected'),
+      );
+
+      await expectLater(
+        LandingCatsDataSource(client: client).getAllCats(),
+        throwsA(
+          isA<UnknownFailure>().having(
+            (f) => f.detail,
+            'detail',
+            contains('very unexpected'),
+          ),
+        ),
       );
     });
   });
@@ -263,6 +306,23 @@ void main() {
       expect(result.map((b) => b.urlImage), everyElement(''));
     });
 
+    test('an image response that is not an object leaves urlImage empty', () async {
+      // Phase 3 replaced `(json.decode(body) as Map)["url"] as String?` with the
+      // map pattern `{'url': final String url}`. The cast threw a `TypeError` when
+      // the body was not a map; the pattern simply does not match.
+      final client = MockClient((request) async {
+        if (request.url.toString() == Endpoints.urlAllCats) {
+          return jsonResponse(fixture('breeds_3.json'));
+        }
+        return jsonResponse('["not", "an", "object"]');
+      });
+
+      final result = await LandingCatsDataSource(client: client).getAllCats();
+
+      expect(result, hasLength(3));
+      expect(result.map((b) => b.urlImage), everyElement(''));
+    });
+
     test('a network failure fetching an image does not break the list', () async {
       // Intentional behavior change: any failure in one of the N image requests
       // used to abort all 67 breeds.
@@ -270,7 +330,7 @@ void main() {
         if (request.url.toString() == Endpoints.urlAllCats) {
           return jsonResponse(fixture('breeds_3.json'));
         }
-        throw const SocketException('no network');
+        throw http.ClientException('no network');
       });
 
       final result = await LandingCatsDataSource(client: client).getAllCats();
