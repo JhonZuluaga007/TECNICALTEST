@@ -21,7 +21,7 @@ This repository is under **active modernization**: it started on Flutter 3.16.7 
 | 2 | Testability seams + regression suite + bug fixes | ✅ Done |
 | 3 | Dart 3: sealed classes + pattern matching | ✅ Done |
 | 4 | Data layer: freezed, immutable entity, N+1, secrets | ✅ Done |
-| 5 | DI: kiwi → get_it + injectable | ⬜ Pending |
+| 5 | DI: kiwi → get_it + injectable | ✅ Done |
 | 6 | Persistence: hydrated_bloc + TTL cache | ⬜ Pending |
 | 7 | Design system: Material 3 ThemeData, tokens, dark mode, l10n | ⬜ Pending |
 | 8 | Real adaptive layout (drop `flutter_screenutil`) | ⬜ Pending |
@@ -41,7 +41,7 @@ lib/
 │   ├── common_widgets/        # Reusable components
 │   ├── config/                # Helpers, endpoints, responsive, theme
 │   ├── errors/                # `sealed class CatsFailure` and its variants
-│   ├── injector/              # Dependency injection (kiwi → get_it in Phase 5)
+│   ├── injector/              # Dependency injection (get_it + injectable)
 │   └── utils/                 # Pure helpers (CatsResult, retry with backoff)
 ├── features/
 │   ├── splash/
@@ -57,7 +57,7 @@ lib/
 - **Models:** `freezed` + `json_serializable`; the data model does **not** extend the domain entity — conversion is an explicit `toEntity()` mapper
 - **Navigation:** `go_router`, declarative nested routes
 - **Errors:** `sealed class CatsFailure` carried by a `sealed class CatsResult<T>` (`Ok` / `Err`) — no `Either` package. Transient failures are retried with backoff (`core/utils/retry.dart`); 4xx and malformed payloads are not
-- **DI:** `kiwi`, hand-written registrations (migrates to `get_it` + `injectable` in Phase 5)
+- **DI:** `get_it` + `injectable`; the graph is generated from annotations, so a missing binding is a build failure rather than a runtime error
 - **Tests:** `flutter_test` + `bloc_test` + `mocktail`, plus `MockClient` from `package:http/testing.dart` at the HTTP boundary
 
 ---
@@ -181,7 +181,7 @@ Cleanup ahead of the upgrade, so no dead code had to be migrated.
 - App identity. The `MaterialApp` `title` read `'enMedallo'` — copy-paste from another project. And the `applicationId` / `PRODUCT_BUNDLE_IDENTIFIER` was `com.example.*`, which **Google Play rejects**. Now `com.jhonzuluaga.catbreeds`, with the Kotlin package moved accordingly. The display name is unified to "Catbreeds" in `AndroidManifest.xml` and `Info.plist`.
 - Added `.gitignore`, which **did not exist** (the repo tracked 104 unfiltered files). It covers `coverage/`, `env/*.json` (secrets via `--dart-define-from-file`, Phase 4), `.fvm/versions/` and `**/failures/` (failed goldens, Phase 8).
 
-**Deliberately left alone:** the `"LigthGreen"`/`"LigthGrey"` typos in `AppCatsColor` and kiwi's `_configureAuthsModule` naming. Those files are deleted in Phases 5 and 7 — fixing them now would be pure churn.
+**Deliberately left alone:** the `"LigthGreen"`/`"LigthGrey"` typos in `AppCatsColor` and kiwi's `_configureAuthsModule` naming. Those files are deleted in Phases 5 and 7 — fixing them now would be pure churn. (The kiwi one is gone as of Phase 5; the colour typos wait for Phase 7.)
 
 ### Phase 1 — Toolchain 3.44.9
 
@@ -219,7 +219,7 @@ Two things the modern template ships that this project was missing: `android:tas
 
 The project had no tests, but the underlying problem was different: **it was untestable by construction.** `LandingCatsBloc()` took no arguments and resolved its own dependency with `Injector.resolve` inside the constructor, so any bloc test would have booted the real container and hit the real network. The datasource called the top-level `http.get`, so there was nowhere to inject a fake client. And nothing had value equality — not the state, not the events, not the entities — so `bloc_test`'s `expect:` lists could never have matched.
 
-This phase opens those seams, fixes the bugs that surfaced while writing the tests, and lands the regression net that protects Phases 3 through 9. It deliberately keeps kiwi, hand-written JSON and `flutter_screenutil`: the diff has to stay small and attributable.
+This phase opens those seams, fixes the bugs that surfaced while writing the tests, and lands the regression net that protects Phases 3 through 9. It deliberately keeps kiwi (replaced in Phase 5), hand-written JSON (Phase 4) and `flutter_screenutil` (Phase 8): the diff has to stay small and attributable.
 
 **Result: 118 tests across 19 files, `analyze` clean, 96.6% of reached lines covered.**
 
@@ -234,7 +234,7 @@ Adding `bloc_test` **fails dependency resolution** while the generator is in the
 | `test 1.31.0` requires `analyzer >=8.0.0 <13.0.0` | — |
 | `kiwi_generator 4.2.1` requires `analyzer ^6.0.0` | intersection is **empty** |
 
-So `kiwi_generator` and `build_runner` were removed and the registrations were hand-written: `injector.g.dart` was 26 trivial lines, and the `@Register` annotation lives in `kiwi` (not in the generator), so nothing broke at the import level. **`kiwi` stays.** `build_runner` returned in Phase 4 for `freezed`, resolving cleanly alongside `bloc_test` at `analyzer 10.2.0` / `source_gen 4.2.4` — a bill that was going to be paid there anyway.
+So `kiwi_generator` and `build_runner` were removed and the registrations were hand-written: `injector.g.dart` was 26 trivial lines, and the `@Register` annotation lives in `kiwi` (not in the generator), so nothing broke at the import level. **`kiwi` stays** — until Phase 5, which replaced it with `get_it` + `injectable` and got generated registrations back. `build_runner` returned in Phase 4 for `freezed`, resolving cleanly alongside `bloc_test` at `analyzer 10.2.0` / `source_gen 4.2.4` — a bill that was going to be paid there anyway.
 
 Along the way the `Injector` gained three things the tests needed: `setup()` now clears before registering (kiwi **throws** `KiwiError` on duplicate registration, so a second `setup()` in the same isolate crashed — which is exactly what happens with more than one test file), a `reset()` for isolation, and `http.Client` registered as a **singleton** instead of every datasource resolve building its own connection pool. That singleton is also the seam that makes `test/app_test.dart` possible.
 
@@ -330,7 +330,7 @@ And one asymmetry the suite pinned on purpose: `Equatable.operator ==` compares 
 |---|---|
 | The **infinite spinner** when the API fails — there is no error branch anywhere. Left in place, with a **characterization** test pinning current behavior so Phase 3's diff makes it visible. | 3 |
 | `freezed`, killing `Model extends Entity`, the root N+1 fix (1 request), moving the API key out of the code, retry with backoff | 4 |
-| `get_it` + `injectable`, singleton repository | 5 |
+| `get_it` + `injectable`, singleton repository | 5 (the singleton half landed early, in Phase 4) |
 | `hydrated_bloc`, TTL cache, killing the `initState` refetch, route-by-id instead of `extra` | 6 |
 | Design system, Material 3 `ThemeData`, l10n (extracting the hardcoded strings to ARB), bundling the Acme font | 7 |
 | Dropping `flutter_screenutil`, real adaptive layout, goldens | 8 |
@@ -546,3 +546,63 @@ Two of those 15 only passed after the verification pass caught that the test was
 | Dropping `flutter_screenutil`, real adaptive layout, goldens | 8 |
 | Promoting `BreedImage` to `core/common_widgets/` if a third consumer appears; `CatsFailure` logging; CI; a coverage gate; hardening `analysis_options.yaml` | 9 |
 | Revoking the leaked key and rewriting git history — a decision for the repository owner, not for a refactor | — |
+
+### Phase 5 — DI: kiwi → get_it + injectable
+
+**The smallest phase of the ten, and worth saying so.** The roadmap defined it as "kiwi → get_it + injectable, singleton repository", and Phase 4 already took the second half: the repository became a singleton there because the image cache did not work without it. What was left is the container.
+
+Three concrete reasons it was still worth doing:
+
+- **kiwi registers at runtime.** A missing dependency was a `KiwiError` on whichever screen needed it. With `injectable` the graph is resolved at build time — delete an annotation and `build_runner` stops producing a usable graph.
+- **kiwi has no dispose hook.** The app's `http.Client` was **never closed** — not in production, not between test files. `get_it` takes dispose callbacks, and awaiting them is why `Injector.setup()` is now `Future<void>`.
+- **kiwi supports neither async nor scopes.** Phase 6's `hydrated_bloc` and disk cache need asynchronous initialisation.
+
+It also closes a Phase 2 debt. `kiwi_generator` was **removed** back then because it pinned `analyzer ^6.0.0` and made `bloc_test` impossible to install, leaving 26 registrations hand-written. Verified before starting: `injectable_generator 2.12.1` resolves alongside `freezed 3.2.5` at `analyzer 10.2.0`, so the conflict does not recur.
+
+#### The shape of it
+
+Three classes carry an annotation, and two registrations live in a module because they cannot:
+
+| | Registration | Why |
+|---|---|---|
+| `LandingCatsRepositoryImpl` | `@LazySingleton(as: LandingCatsRepository)` | `as:` binds the abstraction. Singleton is a **correctness** requirement — it holds Phase 4's URL cache and in-flight map |
+| `GetAllCatsUseCase`, `GetBreedImageUseCase` | `@injectable` | Factories: stateless wrappers over the repository |
+| `http.Client` | `@LazySingleton(dispose: closeHttpClient)` in `AppModule` | Third-party type; nothing to annotate |
+| `LandingCatsDataSource` | `@lazySingleton` in `AppModule` | Its constructor also takes `timeout` and `retryDelays`, which are **test seams, not dependencies** — injectable would have tried to resolve a `Duration` and a `List<Duration>` and failed the build |
+
+`SearchCatBreedsUseCase` stays unregistered, for the reason its own doc comment gives: it has no dependencies, and registering it would force every search-delegate widget test to boot the container.
+
+The `Injector` facade survives, so `main.dart`, `app_test.dart` and `injector_test.dart` keep the same three-method contract and `get_it` is imported in exactly one file of `lib/`.
+
+Two mechanical details worth knowing:
+
+- **`closeHttpClient` is public.** The generated `injector.config.dart` is a separate library, so it cannot reference a private top-level function — a `_closeHttpClient` does not compile.
+- **The test override uses `registerSingleton`, not `registerLazySingleton`.** get_it only runs a dispose callback for a singleton whose instance exists, so a lazy registration no test ever resolved would never be closed. The caller already built the instance, so there is nothing to defer.
+
+#### Tests
+
+`injector_test.dart` was written in Phase 2 stating that its assertions were the contract Phase 5 would have to preserve. They were, with three mechanical changes: `setup()` is awaited, the unregistered-type error is `StateError` instead of `KiwiError`, and the `kiwi` import is gone. Seven cases were added on top, all covering things kiwi could not do.
+
+- `fvm flutter test` → **187 tests passing** (179 before).
+- Coverage: **97.4%** of hand-written lines, **97.7%** overall — unchanged, which is the expected result for a phase that moves wiring rather than behaviour.
+- **10/10 reversions detected**, including the one that is the whole argument for injectable: deleting an annotation leaves the generated graph without that registration, and the suite fails.
+
+#### Honest notes
+
+**A claim in the plan that was wrong.** The plan asserted that flipping the repository's annotation to a factory would break Phase 4's cache tests as well as the container test — "the strongest signal, graph and behaviour coupled as they should be". They are **not** coupled: those tests construct `LandingCatsRepositoryImpl` directly and never touch the container, so all of them stayed green. Only `injector_test.dart` caught it. A new case, `the repository resolved twice shares its image cache`, now makes the claim true by resolving through `Injector` and asserting one request for two resolves.
+
+**A test that covered less than its name.** `init() constructs nothing until something is resolved` does not detect eager construction. Verified by mutation: making the **client** `@Singleton` leaves it green, and harmlessly so — `init()` builds a real client, then `unregister` closes it and the override still lands. The dangerous case is a `@Singleton` **consumer**, which would capture the real client before any override; the test that catches that is `the injected client reaches the datasource`, and mutation confirms it. Renamed to `nothing in the graph touches the client during init()`, with the distinction written down.
+
+**A gap the module's dispose left open.** Every disposal test went through `setup(httpClient:)` — the *override* registration. Dropping `dispose:` from the **module** left the suite green, so the app could have returned to kiwi's leak unnoticed. That path builds a real `http.Client` with nothing to assert on, so the wiring is now checked by reading the generated config, the same technique Phase 4 used to scan for hardcoded secrets.
+
+**A hazard of committing generated code, hit for real.** Mid-verification the mutation harness restored a source file but left `injector.config.dart` stale, and the suite failed with a registration missing that was plainly present in the source. Nothing detects a stale generated file today. Phase 9's CI should run `build_runner build` followed by `git diff --exit-code`.
+
+#### Deliberately not done
+
+| Left alone | Owner |
+|---|---|
+| `hydrated_bloc`, a persistent TTL cache, the `initState` refetch, route-by-id — the async DI this phase enables is what they need | 6 |
+| Design system, Material 3, l10n, bundling Acme | 7 |
+| Dropping `flutter_screenutil`, adaptive layout, goldens | 8 |
+| CI (including the stale-codegen check above), a coverage gate, `unawaited_futures` in `analysis_options.yaml` — which is what would make a forgotten `await Injector.setup()` an error rather than a review catch | 9 |
+| get_it **scopes**, injectable **environments**, per-feature DI modules: no second consumer justifies them yet | 9 revisits |

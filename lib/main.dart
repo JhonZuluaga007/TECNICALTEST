@@ -9,8 +9,11 @@ import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
 import 'routers/app_route.dart';
 
-void main() {
-  Injector.setup();
+/// Async as of Phase 5: `Injector.setup` awaits `getIt.reset()`, which runs the
+/// registered dispose callbacks. The generated `init()` itself is synchronous, so
+/// this does not make startup meaningfully slower — it makes teardown correct.
+Future<void> main() async {
+  await Injector.setup();
   runApp(const MyApp());
 }
 
