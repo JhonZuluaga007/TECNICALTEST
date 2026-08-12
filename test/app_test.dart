@@ -24,7 +24,9 @@ void main() {
     ignoreOverflowErrors();
 
     final requestedUrls = <String>[];
-    Injector.setup(
+    // Awaited as of Phase 5: `setup` resets the container first, which runs the
+    // dispose callbacks, and get_it's `reset()` is asynchronous for that reason.
+    await Injector.setup(
       httpClient: MockClient((request) async {
         requestedUrls.add(request.url.toString());
         if (request.url.toString() == Endpoints.urlAllCats) {

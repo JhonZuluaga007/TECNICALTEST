@@ -1,3 +1,4 @@
+import 'package:injectable/injectable.dart';
 import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
 import 'package:tecnical_test_pragma/core/utils/cats_result.dart';
 // Imported for the `CatBreedModelMapper.toEntity` extension, which is only in
@@ -8,6 +9,15 @@ import 'package:tecnical_test_pragma/features/landing_cats/domain/repository/lan
 
 import '../datasource/landing_cats_data_source.dart';
 
+/// `as:` is what binds the abstraction to this implementation, so consumers keep
+/// depending on `LandingCatsRepository`.
+///
+/// `LazySingleton` rather than `Injectable` is a **correctness requirement**, not a
+/// preference: this class holds the resolved image-URL cache and the in-flight
+/// request map added in Phase 4. As a factory, every resolve would hand out a fresh
+/// empty cache and nothing would ever be cached or de-duplicated. The behaviour
+/// that depends on it is pinned in `landing_cats_repository_impl_test.dart`.
+@LazySingleton(as: LandingCatsRepository)
 class LandingCatsRepositoryImpl implements LandingCatsRepository {
   LandingCatsRepositoryImpl({required this.landingCatsDataSource});
 
