@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -22,15 +21,16 @@ import 'package:tecnical_test_pragma/app_cats_responsive.dart';
 ///   `ScreenUtil.configure` needs no `BuildContext`, so there is no need to wrap
 ///   every test in `ScreenUtilInit`.
 ///
+/// Phase 4 removed the third entry, `EquatableConfig.stringify = true`. It existed
+/// so a failing `blocTest` printed which field differed instead of two
+/// `Instance of 'LandingCatsState'` — freezed generates a field-listing
+/// `toString()` unconditionally, so with `equatable` gone the setting had nothing
+/// left to configure.
+///
 /// Phase 7 bundles the Acme font and drops google_fonts; Phase 8 drops
-/// flutter_screenutil. When that happens, this file is left with just
-/// `EquatableConfig`.
+/// flutter_screenutil. When that happens, this file disappears entirely.
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   GoogleFonts.config.allowRuntimeFetching = false;
-
-  // Makes Equatable's `toString()` print the props, i.e. a failing `blocTest`
-  // shows which field differs instead of two `Instance of 'LandingCatsState'`.
-  EquatableConfig.stringify = true;
 
   // designSize == screen size => `.w`/`.h` are the identity in tests.
   //

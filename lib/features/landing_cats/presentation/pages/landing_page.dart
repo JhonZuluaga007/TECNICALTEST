@@ -7,6 +7,7 @@ import 'package:tecnical_test_pragma/core/common_widgets/my_app_scaffold.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
 import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_image.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/landing_status_views.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/search_delegate_all_catbreeds.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
@@ -143,7 +144,10 @@ class _LandingPageState extends State<LandingPage> {
           final breed = breeds[index];
           return CardCatWidget(
             nameCat: breed.name,
-            imageUrlCat: breed.urlImage,
+            // Phase 4: `imageUrlCat: breed.urlImage` — a URL the datasource had
+            // already resolved for all 65 breeds before this list existed. Now the
+            // card resolves its own, and only the ones `ListView` actually builds.
+            image: BreedImage(referenceImageId: breed.referenceImageId),
             countryOrigin: breed.origin,
             intelligent: breed.intelligence,
             onPressed: () {

@@ -1,11 +1,16 @@
-import 'package:equatable/equatable.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-class WeightEntity extends Equatable {
-  const WeightEntity({required this.imperial, required this.metric});
+part 'weight_cat_entity.freezed.dart';
 
-  final String imperial;
-  final String metric;
-
-  @override
-  List<Object?> get props => [imperial, metric];
+/// A breed's weight, as the two strings TheCatAPI reports (`"7  -  10"`).
+///
+/// Not parsed into numbers on purpose: the API's own formatting is inconsistent
+/// (double spaces, ranges, occasional single values) and the UI only ever
+/// displays it. Parsing would be inventing precision the source does not have.
+@freezed
+abstract class WeightEntity with _$WeightEntity {
+  const factory WeightEntity({
+    required String imperial,
+    required String metric,
+  }) = _WeightEntity;
 }

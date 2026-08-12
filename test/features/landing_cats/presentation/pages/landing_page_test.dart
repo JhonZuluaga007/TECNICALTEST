@@ -25,10 +25,7 @@ void main() {
   setUp(() => useCase = MockGetAllCatsUseCase());
 
   List<CatBreedEntity> stubSuccess({int take = 3}) {
-    final breeds = breedsFrom(
-      'breeds_3.json',
-      urlImage: 'https://x/y.jpg',
-    ).take(take).toList();
+    final breeds = breedsFrom('breeds_3.json').take(take).toList();
     when(
       () => useCase.getAllCatsCall(),
     ).thenAnswer((_) async => Ok<List<CatBreedEntity>>(breeds));
@@ -262,7 +259,7 @@ void main() {
       expect(find.byType(DetailCatPage), findsOneWidget);
       expect(
         tester.widget<DetailCatPage>(find.byType(DetailCatPage)).catBreedEntity,
-        breedsFrom('breeds_3.json', urlImage: 'https://x/y.jpg').first,
+        breedsFrom('breeds_3.json').first,
       );
     });
   });

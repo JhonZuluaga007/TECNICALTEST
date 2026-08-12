@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_image_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/search_delegate_all_catbreeds.dart';
 
@@ -20,9 +21,9 @@ void main() {
   late MockLandingCatsBloc bloc;
 
   final breeds = <CatBreedEntity>[
-    catBreedModel(id: 'siam', name: 'Siamese'),
-    catBreedModel(id: 'abob', name: 'American Bobtail'),
-    catBreedModel(id: 'aege', name: 'Aegean'),
+    catBreedEntity(id: 'siam', name: 'Siamese'),
+    catBreedEntity(id: 'abob', name: 'American Bobtail'),
+    catBreedEntity(id: 'aege', name: 'Aegean'),
   ];
 
   /// The delegate only reads `searchHistory`, which lives on the sealed base, so
@@ -46,17 +47,25 @@ void main() {
 
   Future<void> openSearch(WidgetTester tester) async {
     await tester.pumpWidget(
-      BlocProvider<LandingCatsBloc>.value(
-        value: bloc,
-        child: MaterialApp(
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: IconButton(
-                icon: const Icon(Icons.search),
-                onPressed: () => showSearch(
-                  context: context,
-                  delegate: SearchDelegateAllCatbreeds(
-                    listCatBreedEntity: breeds,
+      // The `RepositoryProvider` is not incidental scaffolding: the result cards
+      // paint a `BreedImage`, which builds a `BreedImageCubit` from the use case it
+      // finds in the tree. This test builds its own widget tree rather than using
+      // `pumpAppWith`, because `showSearch` needs a real route to push onto — so
+      // the provider has to be repeated here.
+      RepositoryProvider<GetBreedImageUseCase>.value(
+        value: FakeGetBreedImageUseCase(),
+        child: BlocProvider<LandingCatsBloc>.value(
+          value: bloc,
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () => showSearch(
+                    context: context,
+                    delegate: SearchDelegateAllCatbreeds(
+                      listCatBreedEntity: breeds,
+                    ),
                   ),
                 ),
               ),

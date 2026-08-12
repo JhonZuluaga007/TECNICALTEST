@@ -63,7 +63,7 @@ void main() {
       tester,
     ) async {
       ignoreOverflowErrors();
-      final breed = catBreedModel(name: 'Abyssinian');
+      final breed = catBreedEntity(name: 'Abyssinian');
       final bloc = tester.buildBloc(useCase);
 
       await tester.pumpRouter(bloc: bloc, initialLocation: '/home');

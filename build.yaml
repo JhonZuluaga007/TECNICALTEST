@@ -1,0 +1,25 @@
+# Code generation config. Introduced in Phase 4, when build_runner returned for
+# freezed (see the note in pubspec.yaml's dev_dependencies).
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          # TheCatAPI is snake_case, the Dart side is camelCase. Set once here
+          # instead of ~20 @JsonKey(name: ...) annotations on CatBreedModel.
+          field_rename: snake
+          # `create_to_json` is left on. Nothing serializes a breed back to the
+          # API today, but freezed generates a `toJson` on any class that declares
+          # a `fromJson` factory, so turning it off means fighting the generator
+          # for no gain — and Phase 6 needs it anyway, to persist cached breeds
+          # through `hydrated_bloc`.
+          #
+          # `explicit_to_json` is REQUIRED, not a preference. Without it the
+          # generated code emits `'weight': instance.weight` — the nested
+          # `WeightModel` object rather than its map — so `toJson()` produces
+          # something `fromJson` cannot read back, and the round-trip throws a
+          # `TypeError` on the nested cast. It only appeared to work because
+          # `json.encode` calls `toJson` on unknown objects for you; anything
+          # handling the map directly, which is what `hydrated_bloc` does, breaks.
+          # Caught by the round-trip test in catbreed_model_test.dart.
+          explicit_to_json: true

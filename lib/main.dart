@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tecnical_test_pragma/app_cats_responsive.dart';
 import 'package:tecnical_test_pragma/core/injector/injector.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_all_cats_use_case.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_image_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
 import 'routers/app_route.dart';
 
@@ -44,6 +45,13 @@ class _MyAppState extends State<MyApp> {
             // bloc's constructor.
             getAllCatsUseCase: Injector.resolve<GetAllCatsUseCase>(),
           ),
+        ),
+        // Provided rather than resolved from the container inside `BreedImage`.
+        // Each card builds its own `BreedImageCubit`, so the widget needs the use
+        // case from somewhere; taking it from the tree instead of the service
+        // locator keeps widget tests from having to boot the real DI graph.
+        RepositoryProvider(
+          create: (context) => Injector.resolve<GetBreedImageUseCase>(),
         ),
       ],
       child: ScreenUtilInit(

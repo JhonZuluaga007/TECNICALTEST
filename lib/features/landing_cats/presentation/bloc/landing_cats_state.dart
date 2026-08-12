@@ -1,63 +1,50 @@
 part of 'landing_cats_bloc.dart';
 
-/// Phase 3: a `sealed` hierarchy instead of one class with a status field.
+/// The landing screen's state, as a sealed union.
 ///
-/// The payoff is that illegal states stop being representable. `breeds` exists
-/// only on [CatsLoaded] and `failure` only on [CatsError], so it is no longer
-/// possible to read a breed list from a failed request — or, more importantly, to
-/// *forget* to handle the failed request, because the `switch` in
-/// `landing_page.dart` is checked for exhaustiveness by the compiler. Before this,
-/// the UI did `state.formSubmissionStatusService is SubmissionSuccess ? list :
-/// spinner`, and an API error meant an infinite spinner.
+/// Phase 3 introduced the modelling and Phase 4 moved it from hand-written
+/// `Equatable` subclasses to `freezed`. The variant names are given explicitly
+/// (`= CatsInitial`, `= CatsLoaded`, …) rather than letting freezed name them
+/// `_$LandingCatsStateInitial`, which is why the exhaustive `switch` in
+/// `landing_page.dart` did not change by a single character.
 ///
-/// The subclasses live in this `part`, which is the same library as
-/// `landing_cats_bloc.dart` — what `sealed` requires.
+/// What the modelling buys, unchanged since Phase 3: the breed list exists on
+/// exactly one variant and the failure on exactly one, so "loaded with an error"
+/// and "failed but still holding breeds" are not expressible. Before this, all
+/// three fields were always present and the UI decided with an `is` check that
+/// had an implicit `else` — which is how an API failure showed a spinner forever.
 ///
-/// `copyWith` is gone: with variants that hold different fields it has no single
-/// meaning. Phase 4 brings it back per variant via `freezed`.
-sealed class LandingCatsState extends Equatable {
-  /// [searchHistory] is `required`, with **no default**, on purpose.
-  ///
-  /// It is orthogonal to the fetch lifecycle and has to survive
-  /// initial -> loading -> loaded/error. `copyWith` used to carry it along for
-  /// free; now every `emit` builds a fresh variant and has to pass it explicitly.
-  /// Making it required turns forgetting it into a **compile error** instead of a
-  /// silently emptied history — which is precisely the failure mode Phase 2 spent
-  /// its time making loud.
-  const LandingCatsState({required this.searchHistory});
+/// [searchHistory] is the one field common to every variant, because it is
+/// orthogonal to the fetch lifecycle: it has to survive loading → loaded → error.
+/// It is `required` with **no default** on purpose — forgetting it is then a
+/// compile error rather than a silently emptied history. And because it is on all
+/// four constructors, freezed exposes it on the base type and generates a
+/// `copyWith` for it that **preserves the concrete variant** (see the bloc's
+/// `_onAddNameAlreadySearched`).
+@freezed
+sealed class LandingCatsState with _$LandingCatsState {
+  /// Nothing requested yet. The landing page dispatches `AllCatsEvent` on mount,
+  /// so this is visible for one frame.
+  const factory LandingCatsState.initial({
+    required List<String> searchHistory,
+  }) = CatsInitial;
 
-  final List<String> searchHistory;
+  /// A fetch is in flight.
+  const factory LandingCatsState.loading({
+    required List<String> searchHistory,
+  }) = CatsLoading;
 
-  @override
-  List<Object?> get props => [searchHistory];
-}
+  /// The fetch succeeded. [breeds] may be empty, and the UI distinguishes that
+  /// case with the list pattern `CatsLoaded(breeds: [])`.
+  const factory LandingCatsState.loaded({
+    required List<CatBreedEntity> breeds,
+    required List<String> searchHistory,
+  }) = CatsLoaded;
 
-final class CatsInitial extends LandingCatsState {
-  const CatsInitial({required super.searchHistory});
-}
-
-final class CatsLoading extends LandingCatsState {
-  const CatsLoading({required super.searchHistory});
-}
-
-final class CatsLoaded extends LandingCatsState {
-  const CatsLoaded({required this.breeds, required super.searchHistory});
-
-  final List<CatBreedEntity> breeds;
-
-  /// `searchHistory` is **not** optional here. Leaving it out would make two
-  /// `CatsLoaded` states with different histories compare equal, `emit` would
-  /// drop the update, and the search history would die in the only state where
-  /// the search screen is reachable at all.
-  @override
-  List<Object?> get props => [breeds, searchHistory];
-}
-
-final class CatsError extends LandingCatsState {
-  const CatsError({required this.failure, required super.searchHistory});
-
-  final CatsFailure failure;
-
-  @override
-  List<Object?> get props => [failure, searchHistory];
+  /// The fetch failed, carrying the **typed** failure so the error view can show
+  /// a different message per cause instead of one generic string.
+  const factory LandingCatsState.error({
+    required CatsFailure failure,
+    required List<String> searchHistory,
+  }) = CatsError;
 }

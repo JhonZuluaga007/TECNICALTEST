@@ -50,9 +50,40 @@ void main() {
     expect(find.byType(CardCatWidget), findsWidgets);
     expect(find.text('Abyssinian'), findsOneWidget);
 
-    // 1 breeds request + 3 image requests, through the real datasource.
-    expect(requestedUrls, hasLength(4));
+    // Phase 4's fix, end to end through the real DI graph, router, bloc and
+    // datasource — the one place it is observable rather than asserted on a unit.
+    //
+    // It used to be `hasLength(4)`: 1 breeds request + 1 image request per breed
+    // in the payload, all of them resolved inside `getAllCats` before this screen
+    // could paint at all. With the real 67-breed payload that is 66.
+    //
+    // Now the breeds request is the only one that happens up front, and images are
+    // requested by the cards `ListView` actually builds. Only 2 of the 3 cards fit
+    // in the 800x600 test surface, which is why the total is 3 and not 4 — and that
+    // difference IS the fix: it scales with what is on screen, not with the payload.
     expect(requestedUrls.first, Endpoints.urlAllCats);
+    expect(
+      requestedUrls.where((url) => url == Endpoints.urlAllCats),
+      hasLength(1),
+      reason: 'exactly one request before first paint',
+    );
+
+    final imageRequests = requestedUrls
+        .where((url) => url.startsWith(Endpoints.urlForGetImageCat))
+        .length;
+    final builtCards = find.byType(CardCatWidget).evaluate().length;
+
+    expect(
+      imageRequests,
+      builtCards,
+      reason: 'one image request per built card, and not one more',
+    );
+    expect(
+      imageRequests,
+      lessThan(3),
+      reason:
+          'fewer requests than breeds in the payload — the point of the fix',
+    );
 
     await tester.tap(find.text('More...').first);
     await tester.pumpAndSettle();

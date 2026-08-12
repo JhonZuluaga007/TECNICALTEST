@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/breed_characteristic_widget.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/network_image.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
 import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
 
@@ -9,13 +8,21 @@ class CardCatWidget extends StatelessWidget {
   const CardCatWidget({
     super.key,
     required this.nameCat,
-    required this.imageUrlCat,
+    required this.image,
     required this.countryOrigin,
     required this.intelligent,
     required this.onPressed,
   });
   final String nameCat;
-  final String imageUrlCat;
+
+  /// The image, as a widget slot rather than a URL.
+  ///
+  /// Phase 4 changed this from `String imageUrlCat`. This card lives in
+  /// `core/common_widgets/`, and resolving a breed image now needs a cubit that
+  /// belongs to the landing feature — taking a `referenceImageId` here would make
+  /// `core/` depend on a feature. A slot keeps the dependency pointing the right
+  /// way, and makes the card reusable with any image source.
+  final Widget image;
   final String countryOrigin;
   final int intelligent;
   final void Function() onPressed;
@@ -57,7 +64,7 @@ class CardCatWidget extends StatelessWidget {
               ],
             ),
             SizedBox(height: 5.h),
-            NetworkImageWidget(imageUrl: imageUrlCat),
+            image,
             SizedBox(height: 5.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

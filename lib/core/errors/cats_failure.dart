@@ -1,4 +1,6 @@
-import 'package:equatable/equatable.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'cats_failure.freezed.dart';
 
 /// Everything that can go wrong while fetching cat breeds.
 ///
@@ -11,61 +13,39 @@ import 'package:equatable/equatable.dart';
 /// exhaustiveness by the compiler, so adding a variant here forces every
 /// consumer to handle it.
 ///
-/// `implements Exception` because the data source throws these.
+/// Phase 4 moved the hand-written `Equatable` subclasses to `freezed`. The
+/// modelling is unchanged and so are the variant names, which is why every
+/// `switch` over this type compiled without a single edit. What changed is that
+/// `==`/`hashCode` are generated instead of maintained by hand.
 ///
-/// Phase 4 regenerates this hierarchy with `freezed`; the modelling stays.
-sealed class CatsFailure extends Equatable implements Exception {
-  const CatsFailure();
+/// `implements Exception` because the data source throws these. It sits on the
+/// base rather than on each variant so `on CatsFailure` catches all of them.
+@freezed
+sealed class CatsFailure with _$CatsFailure implements Exception {
+  /// The request never reached the server (no connection, DNS, refused socket).
+  ///
+  /// Classified from `http.ClientException`, deliberately not from
+  /// `SocketException`: see the note on `LandingCatsDataSource.getAllCats`.
+  const factory CatsFailure.network() = NetworkFailure;
 
-  @override
-  List<Object?> get props => const [];
-}
+  /// The request was sent but did not answer within
+  /// `LandingCatsDataSource.timeout`.
+  const factory CatsFailure.timeout() = TimeoutFailure;
 
-/// The request never reached the server (no connection, DNS, refused socket).
-///
-/// Classified from `http.ClientException`, deliberately not from
-/// `SocketException`: see the note on `LandingCatsDataSource.getAllCats`.
-final class NetworkFailure extends CatsFailure {
-  const NetworkFailure();
-}
+  /// The server answered with a status other than 200.
+  const factory CatsFailure.server({required int statusCode}) = ServerFailure;
 
-/// The request was sent but did not answer within `LandingCatsDataSource.timeout`.
-final class TimeoutFailure extends CatsFailure {
-  const TimeoutFailure();
-}
-
-/// The server answered with a status other than 200.
-final class ServerFailure extends CatsFailure {
-  const ServerFailure({required this.statusCode});
-
-  final int statusCode;
-
-  @override
-  List<Object?> get props => [statusCode];
-}
-
-/// The server answered 200 with a body we cannot read.
-final class UnexpectedResponseFailure extends CatsFailure {
-  const UnexpectedResponseFailure({required this.detail});
-
-  /// Technical description, for tests and future logging. **Not** the copy shown
-  /// to the user: that mapping lives in the presentation layer
+  /// The server answered 200 with a body we cannot read.
+  ///
+  /// [detail] is a technical description, for tests and future logging. **Not**
+  /// the copy shown to the user: that mapping lives in the presentation layer
   /// (`landing_status_views.dart`).
-  final String detail;
+  const factory CatsFailure.unexpectedResponse({required String detail}) =
+      UnexpectedResponseFailure;
 
-  @override
-  List<Object?> get props => [detail];
-}
-
-/// Anything we did not anticipate.
-///
-/// Its existence is what lets the repository be a total function: nothing above
-/// the data layer should ever see a raw exception.
-final class UnknownFailure extends CatsFailure {
-  const UnknownFailure({required this.detail});
-
-  final String detail;
-
-  @override
-  List<Object?> get props => [detail];
+  /// Anything we did not anticipate.
+  ///
+  /// Its existence is what lets the repository be a total function: nothing above
+  /// the data layer should ever see a raw exception.
+  const factory CatsFailure.unknown({required String detail}) = UnknownFailure;
 }

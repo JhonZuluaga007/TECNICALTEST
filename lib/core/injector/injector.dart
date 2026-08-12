@@ -4,6 +4,7 @@ import 'package:tecnical_test_pragma/features/landing_cats/data/datasource/landi
 import 'package:tecnical_test_pragma/features/landing_cats/data/repository/landing_cats_repository_impl.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/repository/landing_cats_repository.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_all_cats_use_case.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_image_use_case.dart';
 
 /// The app's composition root.
 ///
@@ -29,16 +30,25 @@ abstract final class Injector {
       // Singleton: one connection pool for the whole app. With
       // `registerFactory` every resolve would build a brand new `http.Client`.
       ..registerSingleton<http.Client>((c) => httpClient ?? http.Client())
-      ..registerFactory(
+      ..registerSingleton(
         (c) => LandingCatsDataSource(client: c.resolve<http.Client>()),
       )
-      ..registerFactory<LandingCatsRepository>(
+      // Singleton, and Phase 4 made that a **correctness** requirement rather
+      // than a nicety: the repository holds the resolved image-URL cache and the
+      // in-flight request map. As a factory, every `resolve()` handed out a fresh
+      // empty cache, so nothing would ever be cached or de-duplicated.
+      ..registerSingleton<LandingCatsRepository>(
         (c) => LandingCatsRepositoryImpl(
           landingCatsDataSource: c.resolve<LandingCatsDataSource>(),
         ),
       )
       ..registerFactory(
         (c) => GetAllCatsUseCase(
+          landingCatsRepository: c.resolve<LandingCatsRepository>(),
+        ),
+      )
+      ..registerFactory(
+        (c) => GetBreedImageUseCase(
           landingCatsRepository: c.resolve<LandingCatsRepository>(),
         ),
       );

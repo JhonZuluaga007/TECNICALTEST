@@ -19,7 +19,7 @@ void main() {
 
   group('GetAllCatsUseCase', () {
     test('forwards the repository Ok', () async {
-      final breeds = [catBreedModel()];
+      final breeds = [catBreedEntity()];
       when(
         () => repository.getAllCats(),
       ).thenAnswer((_) async => Ok<List<CatBreedEntity>>(breeds));

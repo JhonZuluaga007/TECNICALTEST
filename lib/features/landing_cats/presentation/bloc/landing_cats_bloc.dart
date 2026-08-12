@@ -1,11 +1,12 @@
-import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
 import 'package:tecnical_test_pragma/core/utils/cats_result.dart';
 
 import '../../domain/entities/catbreed_entity.dart';
 import '../../domain/use_cases/get_all_cats_use_case.dart';
 
+part 'landing_cats_bloc.freezed.dart';
 part 'landing_cats_event.dart';
 part 'landing_cats_state.dart';
 
@@ -62,21 +63,17 @@ class LandingCatsBloc extends Bloc<LandingCatsEvent, LandingCatsState> {
 
     final history = List<String>.unmodifiable([...state.searchHistory, name]);
 
-    // "The same variant, with a different history." More verbose than the old
-    // `copyWith`, and better: when Phase 6 adds a variant for the hydrated/
-    // refreshing case, the compiler will refuse to build until this switch
-    // accounts for it.
-    emit(switch (state) {
-      CatsInitial() => CatsInitial(searchHistory: history),
-      CatsLoading() => CatsLoading(searchHistory: history),
-      CatsLoaded(:final breeds) => CatsLoaded(
-        breeds: breeds,
-        searchHistory: history,
-      ),
-      CatsError(:final failure) => CatsError(
-        failure: failure,
-        searchHistory: history,
-      ),
-    });
+    // "The same variant, with a different history."
+    //
+    // Phase 3 wrote this as a four-branch `switch` reconstructing each variant by
+    // hand, on the argument that a new variant would then force a compile error
+    // here. Phase 4 makes that argument moot: `searchHistory` is declared on all
+    // four constructors, so freezed's `copyWith` on the base **preserves the
+    // concrete variant**. There is no branch left to forget — it is total by
+    // construction, which is strictly better than being reminded to update it.
+    //
+    // The exhaustive `switch` that actually earns its keep is the one in
+    // `landing_page.dart`, which is what forces the UI to have an error branch.
+    emit(state.copyWith(searchHistory: history));
   }
 }

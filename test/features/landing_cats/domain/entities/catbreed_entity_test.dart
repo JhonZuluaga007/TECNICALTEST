@@ -21,92 +21,72 @@ void main() {
 
   group('CatBreedEntity', () {
     test('two instances with the same fields are equal', () {
-      expect(catBreedModel(), catBreedModel());
-      expect(catBreedModel().hashCode, catBreedModel().hashCode);
+      expect(catBreedEntity(), catBreedEntity());
+      expect(catBreedEntity().hashCode, catBreedEntity().hashCode);
     });
 
     test('differs by id', () {
-      expect(catBreedModel(id: 'abys'), isNot(catBreedModel(id: 'aege')));
+      expect(catBreedEntity(id: 'abys'), isNot(catBreedEntity(id: 'aege')));
     });
 
     test('differs by the nested weight', () {
-      // Proves two things at once: that `weight` is in the props, and that
-      // `WeightEntity` has value equality of its own (otherwise comparing two
-      // distinct instances would always fail).
+      // Proves two things at once: that `weight` participates in equality, and
+      // that `WeightEntity` has value equality of its own (otherwise comparing
+      // two distinct instances would always fail).
       expect(
-        catBreedModel(
+        catBreedEntity(
           weight: const WeightModel(imperial: '7', metric: '3'),
         ),
         isNot(
-          catBreedModel(
+          catBreedEntity(
             weight: const WeightModel(imperial: '9', metric: '3'),
           ),
         ),
       );
     });
 
-    test('differs by urlImage', () {
+    test('equality covers fields no test varies by hand', () {
+      // Phase 2 wrote `props` by hand across 40 fields with a comment saying a
+      // partial list would hide exactly the regressions Phase 4 might introduce.
+      // freezed generates `==` from the constructor, so it cannot be partial —
+      // but that is a claim about the generator, and this checks it on a field
+      // nothing else in the suite touches.
       expect(
-        catBreedModel(urlImage: 'https://x/a.jpg'),
-        isNot(catBreedModel(urlImage: 'https://x/b.jpg')),
+        catBreedModel(bidability: 3).toEntity(),
+        isNot(catBreedModel(bidability: 4).toEntity()),
       );
     });
 
-    test('a model is NOT equal to an entity with the same 40 fields', () {
-      // `Equatable.operator ==` compares `runtimeType`, so
-      // `CatBreedModel != CatBreedEntity` even with identical fields.
+    test('a model is not assignable to an entity', () {
+      // The replacement for Phase 2's canary test, which asserted that
+      // `CatBreedModel != CatBreedEntity` despite having all 40 fields identical
+      // (`Equatable.operator ==` compares `runtimeType`). That asymmetry was a
+      // consequence of `CatBreedModel extends CatBreedEntity` plus a repository
+      // that upcast without converting, so the objects in the bloc state were
+      // always models.
       //
-      // This matters across the whole suite: the repository upcasts the models to
-      // `List<CatBreedEntity>` without converting them, so the runtime elements
-      // of the bloc state are ALWAYS `CatBreedModel`. That is why every builder
-      // returns models. And this test is the canary for Phase 4, when
-      // `Model extends Entity` goes away.
-      final model = catBreedModel();
-      final entity = CatBreedEntity(
-        weight: model.weight,
-        id: model.id,
-        name: model.name,
-        urlImage: model.urlImage,
-        cfaUrl: model.cfaUrl,
-        vetstreetUrl: model.vetstreetUrl,
-        vcahospitalsUrl: model.vcahospitalsUrl,
-        temperament: model.temperament,
-        origin: model.origin,
-        countryCodes: model.countryCodes,
-        countryCode: model.countryCode,
-        description: model.description,
-        lifeSpan: model.lifeSpan,
-        indoor: model.indoor,
-        lap: model.lap,
-        altNames: model.altNames,
-        adaptability: model.adaptability,
-        affectionLevel: model.affectionLevel,
-        childFriendly: model.childFriendly,
-        dogFriendly: model.dogFriendly,
-        energyLevel: model.energyLevel,
-        grooming: model.grooming,
-        healthIssues: model.healthIssues,
-        intelligence: model.intelligence,
-        sheddingLevel: model.sheddingLevel,
-        socialNeeds: model.socialNeeds,
-        strangerFriendly: model.strangerFriendly,
-        vocalisation: model.vocalisation,
-        experimental: model.experimental,
-        hairless: model.hairless,
-        natural: model.natural,
-        rare: model.rare,
-        rex: model.rex,
-        suppressedTail: model.suppressedTail,
-        shortLegs: model.shortLegs,
-        wikipediaUrl: model.wikipediaUrl,
-        hypoallergenic: model.hypoallergenic,
-        referenceImageId: model.referenceImageId,
-        catFriendly: model.catFriendly,
-        bidability: model.bidability,
-      );
+      // Phase 4 removed the inheritance, so the two types are now unrelated and
+      // the assertion is a **compile-time** one: the `isNot` below still holds,
+      // but what actually matters is that this file could not pass a
+      // `CatBreedModel` where a `CatBreedEntity` is expected even if it tried.
+      expect(catBreedModel(), isA<CatBreedModel>());
+      expect(catBreedModel(), isNot(isA<CatBreedEntity>()));
+      expect(catBreedEntity(), isA<CatBreedEntity>());
+      expect(catBreedEntity(), isNot(isA<CatBreedModel>()));
+    });
 
-      expect(model, isNot(entity));
-      expect(model.props, entity.props);
+    test('urlImage is gone from the domain', () {
+      // It was a data-layer artifact in the domain entity, and holding it is what
+      // forced the datasource to resolve 65 image URLs before the first frame.
+      // `referenceImageId` is what remains, and `BreedImage` resolves it lazily.
+      expect(catBreedEntity().referenceImageId, '0XYvRd7oD');
+      // The compile-time half: `catBreedEntity().urlImage` does not exist. If it
+      // came back, `landing_page.dart` could go straight back to N+1.
+      expect(
+        catBreedEntity().toString(),
+        isNot(contains('urlImage')),
+        reason: 'freezed toString lists every field',
+      );
     });
   });
 }

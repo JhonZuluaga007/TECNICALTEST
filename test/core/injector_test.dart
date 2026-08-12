@@ -6,6 +6,7 @@ import 'package:tecnical_test_pragma/features/landing_cats/data/datasource/landi
 import 'package:tecnical_test_pragma/features/landing_cats/data/repository/landing_cats_repository_impl.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/repository/landing_cats_repository.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_all_cats_use_case.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_image_use_case.dart';
 
 /// A registration mistake is a runtime-only crash that no other kind of test
 /// catches. Cheap and high value: these assertions are also the contract Phase 5
@@ -41,16 +42,32 @@ void main() {
         same(Injector.resolve<http.Client>()),
       );
 
-      // And everything else stays a factory, exactly as the generator
-      // registered it. Phase 6 needs the REPOSITORY to become a singleton for its
-      // TTL cache to ever hit; if this assertion changes there, it is deliberate.
+      // The repository is a singleton too, as of Phase 4 — and that is a
+      // correctness requirement, not a nicety. It holds the resolved image-URL
+      // cache and the in-flight request map, so as a factory every `resolve()`
+      // would hand out a fresh empty cache and nothing would ever be cached or
+      // de-duplicated. This assertion previously said `isNot(same(...))` with a
+      // note that Phase 6 would need it flipped; it happened two phases early,
+      // and `landing_cats_repository_impl_test.dart` pins the behaviour that
+      // depends on it.
+      expect(
+        Injector.resolve<LandingCatsRepository>(),
+        same(Injector.resolve<LandingCatsRepository>()),
+      );
+      expect(
+        Injector.resolve<LandingCatsDataSource>(),
+        same(Injector.resolve<LandingCatsDataSource>()),
+      );
+
+      // Use cases stay factories: they are stateless wrappers over the
+      // repository, so sharing them buys nothing.
       expect(
         Injector.resolve<GetAllCatsUseCase>(),
         isNot(same(Injector.resolve<GetAllCatsUseCase>())),
       );
       expect(
-        Injector.resolve<LandingCatsRepository>(),
-        isNot(same(Injector.resolve<LandingCatsRepository>())),
+        Injector.resolve<GetBreedImageUseCase>(),
+        isNot(same(Injector.resolve<GetBreedImageUseCase>())),
       );
     });
 

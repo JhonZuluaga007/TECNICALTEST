@@ -8,6 +8,7 @@ import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
 import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/search_cat_breeds_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_image.dart';
 import 'package:tecnical_test_pragma/routers/routes_imports.dart';
 
 class SearchDelegateAllCatbreeds extends SearchDelegate<List<CatBreedEntity>?> {
@@ -91,7 +92,7 @@ class SearchDelegateAllCatbreeds extends SearchDelegate<List<CatBreedEntity>?> {
         final breed = filterCatBreedEntity[index];
         return CardCatWidget(
           nameCat: breed.name,
-          imageUrlCat: breed.urlImage,
+          image: BreedImage(referenceImageId: breed.referenceImageId),
           countryOrigin: breed.origin,
           intelligent: breed.intelligence,
           onPressed: () => context.goNamed(detailPage, extra: breed),
