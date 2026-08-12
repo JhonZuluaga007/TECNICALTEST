@@ -5,27 +5,55 @@ import 'package:http/http.dart' as http;
 
 import 'package:tecnical_test_pragma/core/config/helpers/endpoints.dart';
 import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
-import 'package:tecnical_test_pragma/core/utils/map_with_concurrency.dart';
+import 'package:tecnical_test_pragma/core/utils/retry.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/data/models/catbreed_model.dart';
 
 class LandingCatsDataSource {
   /// [client] is injected so tests can pass a `MockClient`. The code previously
   /// called the top-level `http.get`, so there was no seam at all.
   ///
-  /// [timeout] and [imageConcurrency] are parameters so tests can force a 20 ms
-  /// timeout and assert the in-flight request limit without depending on real
-  /// wall-clock time.
+  /// [timeout] and [retryDelays] are parameters so tests can force a 20 ms timeout
+  /// and retry without spending real wall-clock time.
   LandingCatsDataSource({
     http.Client? client,
     this.timeout = const Duration(seconds: 10),
-    this.imageConcurrency = 6,
+    this.retryDelays = const [
+      Duration(milliseconds: 400),
+      Duration(seconds: 1),
+    ],
   }) : _client = client ?? http.Client();
 
   final http.Client _client;
   final Duration timeout;
-  final int imageConcurrency;
 
-  Future<List<CatBreedModel>> getAllCats() async {
+  /// One entry per retry of `/breeds`; empty disables retrying.
+  final List<Duration> retryDelays;
+
+  /// Fetches every breed in **one** request.
+  ///
+  /// This is Phase 4's headline change. It used to make 66: one for `/breeds`
+  /// plus one `GET /v1/images/{id}` for each of the 65 breeds carrying a
+  /// `reference_image_id`, all of them before the first frame could be painted.
+  /// Phase 2 had softened that with bounded concurrency (67 serial round-trips
+  /// down to ~11 batches of 6), but the user was still waiting on 65 images to
+  /// see the 3 cards that fit on screen.
+  ///
+  /// Resolving image URLs is now [getBreedImageUrl], called per card as the list
+  /// builds them. Measured against the live API, this is not an optimisation that
+  /// could have been skipped: `/v1/breeds` carries no image data at all (`0/67`
+  /// breeds have an `image` key), and while every URL does follow
+  /// `cdn2.thecatapi.com/images/{id}.{ext}`, the extension is not always `.jpg` —
+  /// 3 of the 65 are `.png`, and requesting those as `.jpg` returns 403. So the
+  /// URL genuinely has to be asked for; the fix is asking lazily, not asking less.
+  ///
+  /// Retried on transient failures. Only this call is: image resolution already
+  /// degrades to a placeholder, and retrying 65 of those would multiply the wait
+  /// for something the user barely notices. This one is the difference between a
+  /// list and an error screen.
+  Future<List<CatBreedModel>> getAllCats() =>
+      withRetry(_fetchBreeds, delays: retryDelays);
+
+  Future<List<CatBreedModel>> _fetchBreeds() async {
     // The `try` wraps the FIRST await. It used to start after the first
     // `http.get`, so a `SocketException` on `/breeds` escaped raw: the
     // repository's `on InvalidData` did not catch it and the bloc's `fold` never
@@ -49,29 +77,10 @@ class LandingCatsDataSource {
           detail: 'Expected a JSON array of breeds',
         );
       }
-      final raw = decoded.cast<Map<String, dynamic>>();
-
-      // `/breeds` carries no images, so each one has to be resolved separately.
-      // Bounded concurrency instead of sequential: 67 breeds go from 67 serial
-      // round-trips to roughly 11 batches of 6.
-      //
-      // Phase 4 removes the N+1 at the root: `getAllCats` will make a single
-      // request and each card will resolve its own image on demand.
-      final urls = await mapWithConcurrency<Map<String, dynamic>, String>(raw, (
-        breed,
-      ) async {
-        final referenceId = (breed["reference_image_id"] as String?) ?? "";
-        // 2 of the 67 breeds (`European Burmese` and `Malayan`) have
-        // `reference_image_id: null`. The old code requested them anyway, i.e.
-        // `GET /v1/images/` with no id, which returns 400 and was silently
-        // swallowed. Two guaranteed wasted requests on every launch.
-        if (referenceId.isEmpty) return "";
-        return _imageUrlFor(referenceId);
-      }, concurrency: imageConcurrency);
 
       return [
-        for (var i = 0; i < raw.length; i++)
-          CatBreedModel.fromMap(raw[i], urlImage: urls[i]),
+        for (final raw in decoded.cast<Map<String, dynamic>>())
+          CatBreedModel.fromJson(raw),
       ];
     } on CatsFailure {
       // Without this `rethrow` the clauses below would re-wrap the failure thrown
@@ -100,16 +109,25 @@ class LandingCatsDataSource {
     }
   }
 
-  /// Returns the image URL, or `""` if it could not be obtained.
+  /// Resolves one breed's image URL, or `""` if it could not be obtained.
   ///
-  /// Deliberately never throws: letting one broken image take down all 67 breeds
-  /// was worse UX, and with concurrency a `Future.wait` with two errors would
-  /// leave one unhandled.
-  Future<String> _imageUrlFor(String referenceId) async {
+  /// Was `_imageUrlFor`, private and called 65 times in a burst from
+  /// [getAllCats]. Now public and called once per visible card.
+  ///
+  /// Deliberately never throws. Letting one broken image take down the whole
+  /// screen was worse UX than a placeholder, and "this breed has no photo" is not
+  /// an error state — 2 of the 67 breeds genuinely have no
+  /// `reference_image_id`.
+  Future<String> getBreedImageUrl(String referenceImageId) async {
+    // The old code requested these anyway, i.e. `GET /v1/images/` with no id,
+    // which returns 400 and was silently swallowed: two guaranteed wasted
+    // requests on every launch.
+    if (referenceImageId.isEmpty) return "";
+
     try {
       final response = await _client
           .get(
-            Uri.parse("${Endpoints.urlForGetImageCat}$referenceId"),
+            Uri.parse("${Endpoints.urlForGetImageCat}$referenceImageId"),
             headers: Endpoints.authHeader,
           )
           .timeout(timeout);

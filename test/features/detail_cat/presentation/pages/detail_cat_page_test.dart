@@ -8,7 +8,7 @@ import '../../../../helpers/builders.dart';
 import '../../../../helpers/pump_app.dart';
 
 void main() {
-  final breed = catBreedModel(
+  final breed = catBreedEntity(
     name: 'Abyssinian',
     origin: 'Egypt',
     lifeSpan: '14 - 15',

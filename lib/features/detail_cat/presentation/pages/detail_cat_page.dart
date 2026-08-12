@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/my_app_scaffold.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/network_image.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
 import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/widgets/list_characteristics_catbreeds_widget.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
+// The detail screen already depends on the landing feature for the entity it is
+// handed; `BreedImage` follows the same dependency. Phase 9 promotes it to
+// `core/common_widgets/` if a third consumer shows up.
+import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_image.dart';
 
 class DetailCatPage extends StatefulWidget {
   const DetailCatPage({super.key, required this.catBreedEntity});
@@ -41,9 +44,9 @@ class _DetailCatPageState extends State<DetailCatPage> {
       ),
       children: [
         Center(
-          child: NetworkImageWidget(
+          child: BreedImage(
             height: (MediaQuery.of(context).size.height / 2).h,
-            imageUrl: widget.catBreedEntity.urlImage,
+            referenceImageId: widget.catBreedEntity.referenceImageId,
           ),
         ),
         Expanded(

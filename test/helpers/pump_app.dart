@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_all_cats_use_case.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_image_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
 import 'package:tecnical_test_pragma/routers/app_route.dart';
+
+import 'mocks.dart';
 
 extension PumpApp on WidgetTester {
   /// Builds the bloc and schedules its closure.
@@ -28,13 +31,34 @@ extension PumpApp on WidgetTester {
   /// two-phase startup (it returns `SizedBox.shrink()` until a
   /// `didChangeDependencies` and a `FutureBuilder` both resolve) would only
   /// complicate every pump.
-  Future<void> pumpAppWith(Widget child, {LandingCatsBloc? bloc}) {
-    if (bloc == null) return pumpWidget(MaterialApp(home: child));
+  /// The image use case every card needs, defaulting to a network-free fake.
+  ///
+  /// Phase 4 made this necessary: each card paints a `BreedImage`, which builds a
+  /// `BreedImageCubit` from the `GetBreedImageUseCase` it finds in the tree. It
+  /// comes from a `RepositoryProvider` rather than from `Injector.resolve()`
+  /// precisely so that tests can supply it here instead of booting the real DI
+  /// graph and the real network.
+  Future<void> pumpAppWith(
+    Widget child, {
+    LandingCatsBloc? bloc,
+    GetBreedImageUseCase? imageUseCase,
+  }) {
+    Widget withImageUseCase(Widget inner) =>
+        RepositoryProvider<GetBreedImageUseCase>.value(
+          value: imageUseCase ?? FakeGetBreedImageUseCase(),
+          child: inner,
+        );
+
+    if (bloc == null) {
+      return pumpWidget(withImageUseCase(MaterialApp(home: child)));
+    }
 
     return pumpWidget(
-      BlocProvider<LandingCatsBloc>.value(
-        value: bloc,
-        child: MaterialApp(home: child),
+      withImageUseCase(
+        BlocProvider<LandingCatsBloc>.value(
+          value: bloc,
+          child: MaterialApp(home: child),
+        ),
       ),
     );
   }
@@ -43,14 +67,18 @@ extension PumpApp on WidgetTester {
   Future<void> pumpRouter({
     required LandingCatsBloc bloc,
     String initialLocation = '/',
+    GetBreedImageUseCase? imageUseCase,
   }) {
     final router = AppRoute.router(initialLocation: initialLocation);
     addTearDown(router.dispose);
 
     return pumpWidget(
-      BlocProvider<LandingCatsBloc>.value(
-        value: bloc,
-        child: MaterialApp.router(routerConfig: router),
+      RepositoryProvider<GetBreedImageUseCase>.value(
+        value: imageUseCase ?? FakeGetBreedImageUseCase(),
+        child: BlocProvider<LandingCatsBloc>.value(
+          value: bloc,
+          child: MaterialApp.router(routerConfig: router),
+        ),
       ),
     );
   }

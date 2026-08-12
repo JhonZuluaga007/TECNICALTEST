@@ -35,10 +35,13 @@ dependencies:
   kiwi: ^5.0.1
   google_fonts: ^8.2.1
   go_router: ^17.4.0
-  # equatable is temporary: it gives value equality to states, events and
-  # entities so bloc_test's `expect:` and mocktail's `verify` become possible.
-  # It goes away in Phase 4, when freezed generates `==`/`hashCode`.
-  equatable: ^2.0.7
+  # `equatable` was here from Phase 2 to Phase 4, described as temporary: it gave
+  # value equality to states, events and entities so bloc_test's `expect:` and
+  # mocktail's `verify` could work at all. Phase 4 removed it — freezed generates
+  # `==`, `hashCode` and `toString` for the same types, plus `copyWith` and
+  # `fromJson`, so keeping both would have meant two mechanisms for one job.
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.12.0
 
   flutter:
     sdk: flutter
@@ -49,13 +52,26 @@ dependencies:
   cupertino_icons: ^1.0.2
 
 dev_dependencies:
-  # kiwi_generator and build_runner were removed in Phase 2. Reason: flutter_test
-  # pins `test_api: 0.7.11` exactly -> the only compatible `test` version is
-  # 1.31.0 -> which requires `analyzer >=8.0.0 <13.0.0`, while kiwi_generator
-  # requires `analyzer ^6.0.0`. Empty intersection: with the generator present,
-  # adding bloc_test fails resolution. The kiwi registrations (26 lines) are
-  # hand-written in lib/core/injector/injector.dart. `kiwi` stays in deps.
-  # build_runner returns in Phase 3/4 for freezed, at modern versions.
+  # Phase 2 removed kiwi_generator and build_runner: flutter_test pins
+  # `test_api: 0.7.11` exactly -> the only compatible `test` is 1.31.0 -> which
+  # requires `analyzer >=8.0.0 <13.0.0`, while kiwi_generator required
+  # `analyzer ^6.0.0`. Empty intersection, so with the generator present adding
+  # bloc_test failed resolution.
+  #
+  # Phase 4 brings build_runner back for freezed, and the conflict is gone
+  # because kiwi_generator is what caused it. Resolved versions: freezed 3.2.5,
+  # json_serializable 6.14.1, build_runner 2.15.1, analyzer 10.2.0 — verified
+  # alongside bloc_test. The kiwi registrations stay hand-written until Phase 5
+  # replaces kiwi with get_it + injectable.
+  build_runner: ^2.15.1
+  freezed: ^3.2.5
+  json_serializable: ^6.14.1
+  # Pinned below 11 on purpose. Left alone, pub maximizes `analyzer` to 12.x,
+  # which no stable freezed supports yet, so it silently resolves freezed to the
+  # `3.2.6-dev.1` prerelease. Shipping a prerelease codegen dependency is not
+  # worth the newer analyzer, which nothing here uses directly. Remove this pin
+  # once a stable freezed supports analyzer 12.
+  analyzer: ^10.2.0
   bloc_test: ^10.0.0
   mocktail: ^1.0.4
 

@@ -8,9 +8,9 @@ void main() {
   const search = SearchCatBreedsUseCase();
 
   final breeds = <CatBreedEntity>[
-    catBreedModel(id: 'siam', name: 'Siamese'),
-    catBreedModel(id: 'abob', name: 'American Bobtail'),
-    catBreedModel(id: 'abys', name: 'Abyssinian'),
+    catBreedEntity(id: 'siam', name: 'Siamese'),
+    catBreedEntity(id: 'abob', name: 'American Bobtail'),
+    catBreedEntity(id: 'abys', name: 'Abyssinian'),
   ];
 
   group('SearchCatBreedsUseCase', () {

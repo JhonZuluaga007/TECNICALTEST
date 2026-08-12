@@ -17,9 +17,12 @@ void main() {
   // States are asserted CONCRETELY, not with matchers, which the sealed hierarchy
   // makes even more readable than Phase 2's `copyWith` chains.
   //
-  // Note: `breeds` are `CatBreedModel`, never bare `CatBreedEntity` — Equatable
-  // compares `runtimeType`.
-  final breeds = breedsFrom('breeds_3.json', urlImage: 'https://x/y.jpg');
+  // These are `CatBreedEntity`. Until Phase 4 the note here had to warn that they
+  // were really `CatBreedModel` — the repository upcast without converting, so a
+  // builder returning the bare entity would never match an equality assertion.
+  // The repository maps explicitly now, so what the bloc sees is what the domain
+  // declares.
+  final breeds = breedsFrom('breeds_3.json');
 
   void stubSuccess() => when(
     () => useCase.getAllCatsCall(),
@@ -150,10 +153,10 @@ void main() {
 
     blocTest<LandingCatsBloc, LandingCatsState>(
       'the history survives a whole fetch cycle',
-      // Risk #1 of Phase 3. `copyWith` used to carry the history across
-      // transitions for free; every `emit` now builds a fresh variant and has to
-      // pass it along. Dropping it in ANY branch silently wipes the feature, so
-      // both emits of the fetch are asserted here.
+      // Risk #1 of Phase 3: the history is orthogonal to the fetch lifecycle, and
+      // `_onAllCats` builds a fresh variant on each `emit`, so dropping it in ANY
+      // branch silently wipes the feature. Both emits of the fetch are asserted
+      // here.
       setUp: stubSuccess,
       build: () => LandingCatsBloc(getAllCatsUseCase: useCase),
       act: (bloc) async {
@@ -186,10 +189,15 @@ void main() {
 
     blocTest<LandingCatsBloc, LandingCatsState>(
       'adding a name while loaded emits, and keeps the breeds',
-      // The most likely silent failure in this whole diff: if `CatsLoaded.props`
-      // listed only `[breeds]`, the third state below would compare EQUAL to the
-      // second, `emit` would drop it, and the search history would die in the one
-      // state where the search screen is reachable at all.
+      // Two things at once, and both are silent failure modes.
+      //
+      // If `==` did not account for `searchHistory`, the third state below would
+      // compare EQUAL to the second, `emit` would drop it, and the history would
+      // die in the one state where the search screen is reachable at all.
+      //
+      // And it pins that `copyWith` on the sealed base **preserves the concrete
+      // variant**: expecting `CatsLoaded` here is what fails if it ever returned
+      // some other member of the union.
       setUp: stubSuccess,
       build: () => LandingCatsBloc(getAllCatsUseCase: useCase),
       act: (bloc) async {
@@ -201,6 +209,27 @@ void main() {
         const CatsLoading(searchHistory: []),
         CatsLoaded(breeds: breeds, searchHistory: const []),
         CatsLoaded(breeds: breeds, searchHistory: const ['siamese']),
+      ],
+    );
+
+    blocTest<LandingCatsBloc, LandingCatsState>(
+      'adding a name while in error keeps the variant AND the failure',
+      // The harder half of variant preservation. `CatsLoaded` carrying its breeds
+      // through a `copyWith` is the obvious case; this is the one where the
+      // preserved payload is something else entirely. Phase 3 had an explicit
+      // branch reconstructing `CatsError(failure: failure, ...)`; Phase 4 deleted
+      // that branch and relies on freezed, so the guarantee needs its own test.
+      setUp: stubFailure,
+      build: () => LandingCatsBloc(getAllCatsUseCase: useCase),
+      act: (bloc) async {
+        bloc.add(const AllCatsEvent());
+        await bloc.stream.firstWhere((state) => state is CatsError);
+        bloc.add(const AddNameAlreadySearchedEvent(name: 'siamese'));
+      },
+      expect: () => <LandingCatsState>[
+        const CatsLoading(searchHistory: []),
+        const CatsError(failure: NetworkFailure(), searchHistory: []),
+        const CatsError(failure: NetworkFailure(), searchHistory: ['siamese']),
       ],
     );
 
