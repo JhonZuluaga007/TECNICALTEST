@@ -13,14 +13,20 @@ import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:tecnical_test_pragma/core/injector/injector.dart' as _i931;
+import 'package:tecnical_test_pragma/core/storage/key_value_store.dart'
+    as _i628;
 import 'package:tecnical_test_pragma/features/landing_cats/data/datasource/landing_cats_data_source.dart'
     as _i65;
+import 'package:tecnical_test_pragma/features/landing_cats/data/datasource/landing_cats_local_data_source.dart'
+    as _i1048;
 import 'package:tecnical_test_pragma/features/landing_cats/data/repository/landing_cats_repository_impl.dart'
     as _i100;
 import 'package:tecnical_test_pragma/features/landing_cats/domain/repository/landing_cats_repository.dart'
     as _i308;
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_all_cats_use_case.dart'
     as _i1059;
+import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_by_id_use_case.dart'
+    as _i608;
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_image_use_case.dart'
     as _i635;
 
@@ -39,13 +45,22 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i65.LandingCatsDataSource>(
       () => appModule.dataSource(gh<_i519.Client>()),
     );
+    gh.lazySingleton<_i1048.LandingCatsLocalDataSource>(
+      () => appModule.localDataSource(gh<_i628.KeyValueStore>()),
+    );
     gh.lazySingleton<_i308.LandingCatsRepository>(
       () => _i100.LandingCatsRepositoryImpl(
         landingCatsDataSource: gh<_i65.LandingCatsDataSource>(),
+        localDataSource: gh<_i1048.LandingCatsLocalDataSource>(),
       ),
     );
     gh.factory<_i1059.GetAllCatsUseCase>(
       () => _i1059.GetAllCatsUseCase(
+        landingCatsRepository: gh<_i308.LandingCatsRepository>(),
+      ),
+    );
+    gh.factory<_i608.GetBreedByIdUseCase>(
+      () => _i608.GetBreedByIdUseCase(
         landingCatsRepository: gh<_i308.LandingCatsRepository>(),
       ),
     );

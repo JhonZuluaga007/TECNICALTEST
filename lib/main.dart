@@ -1,10 +1,14 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hydrated_bloc/hydrated_bloc.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:tecnical_test_pragma/app_cats_responsive.dart';
 import 'package:tecnical_test_pragma/core/injector/injector.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_all_cats_use_case.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_by_id_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_image_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
 import 'routers/app_route.dart';
@@ -12,10 +16,31 @@ import 'routers/app_route.dart';
 /// Async as of Phase 5: `Injector.setup` awaits `getIt.reset()`, which runs the
 /// registered dispose callbacks. The generated `init()` itself is synchronous, so
 /// this does not make startup meaningfully slower — it makes teardown correct.
+///
+/// Phase 6 adds the one piece of real startup I/O: opening the storage box.
 Future<void> main() async {
-  await Injector.setup();
+  // Required before `path_provider`: it is a plugin, and plugin channels need the
+  // binding. It has to come before `HydratedStorage.build`, not before `runApp`.
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Injector.setup(storage: await _buildStorage());
   runApp(const MyApp());
 }
+
+/// The app's persistent storage: the bloc's search history, and the breeds cache.
+///
+/// `getApplicationDocumentsDirectory`, **not** `getTemporaryDirectory` — which is
+/// what hydrated_bloc's own example uses. The search history is something the user
+/// created, and the OS is free to empty the temp directory whenever it wants
+/// space. The breeds cache living in the same box is fine either way: it carries a
+/// TTL and rebuilds itself in one request.
+Future<Storage> _buildStorage() async => HydratedStorage.build(
+  storageDirectory: kIsWeb
+      ? HydratedStorageDirectory.web
+      : HydratedStorageDirectory(
+          (await getApplicationDocumentsDirectory()).path,
+        ),
+);
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -43,11 +68,30 @@ class _MyAppState extends State<MyApp> {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => LandingCatsBloc(
-            // Resolution lives here, in the composition root, not inside the
-            // bloc's constructor.
-            getAllCatsUseCase: Injector.resolve<GetAllCatsUseCase>(),
-          ),
+          // `lazy: false` is load-bearing, and it was not obvious: `BlocProvider`
+          // defaults to building on first read, so with the default the `add`
+          // below would not run until `LandingPage` first looked the bloc up —
+          // i.e. after the splash, which is exactly the timing this phase set out
+          // to improve. Measured in `app_test.dart`, which asserts the request has
+          // happened while the splash is still on screen.
+          lazy: false,
+          create: (context) =>
+              LandingCatsBloc(
+                  // Resolution lives here, in the composition root, not inside the
+                  // bloc's constructor.
+                  getAllCatsUseCase: Injector.resolve<GetAllCatsUseCase>(),
+                  storage: Injector.resolve<Storage>(),
+                )
+                // Phase 6: the fetch is dispatched **once, here**, instead of in
+                // `LandingPage.initState`. go_router rebuilds that page on every
+                // return from the detail screen, so the old placement refetched the
+                // whole list every time the user pressed back. Here it runs once per
+                // app launch — during the splash, so the five seconds are no longer
+                // dead time.
+                //
+                // Cheap by design: the repository answers from the disk cache when it
+                // is fresh, so this is usually zero requests, not one.
+                ..add(const AllCatsEvent()),
         ),
         // Provided rather than resolved from the container inside `BreedImage`.
         // Each card builds its own `BreedImageCubit`, so the widget needs the use
@@ -55,6 +99,10 @@ class _MyAppState extends State<MyApp> {
         // locator keeps widget tests from having to boot the real DI graph.
         RepositoryProvider(
           create: (context) => Injector.resolve<GetBreedImageUseCase>(),
+        ),
+        // Same reasoning, for the detail screen's cubit. Phase 6.
+        RepositoryProvider(
+          create: (context) => Injector.resolve<GetBreedByIdUseCase>(),
         ),
       ],
       child: ScreenUtilInit(

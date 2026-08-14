@@ -102,6 +102,62 @@ class CatsErrorView extends StatelessWidget {
   }
 }
 
+/// Shown above the list when the breeds came from an expired cache.
+///
+/// New in Phase 6, and the visible half of `CatsStale`. It is a strip rather than
+/// a full-screen state on purpose: the list underneath is real, usable data, and
+/// the only thing wrong with it is its age. Replacing the screen with an error —
+/// which is what happened before this phase — threw that away.
+///
+/// [onRetry] is the same callback the error view takes, so the user has a way out
+/// without hunting for one.
+class StaleBanner extends StatelessWidget {
+  const StaleBanner({super.key, required this.failure, required this.onRetry});
+
+  final CatsFailure failure;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final wColor = AppCatsColor();
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        color: wColor.mapColors["W"],
+        border: Border.all(color: wColor.black, width: 1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_off_outlined, size: 20.sp, color: wColor.black[100]),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: TextWidget(
+              // Deliberately says the list is old BEFORE saying why. The cause is
+              // secondary — what the user needs to know first is that what they
+              // are looking at is still usable.
+              text: 'Showing saved breeds. ${messageFor(failure)}',
+              textAlign: TextAlign.start,
+              fontSize: 14,
+              colorText: wColor.black,
+            ),
+          ),
+          SizedBox(width: 8.w),
+          TextButton(
+            onPressed: onRetry,
+            child: TextWidget(
+              text: 'Refresh',
+              fontSize: 14,
+              colorText: wColor.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Maps a failure to the copy the user reads.
 ///
 /// It lives in the presentation layer on purpose: the domain should not own copy,
@@ -118,8 +174,12 @@ String messageFor(CatsFailure failure) => switch (failure) {
     'No internet connection. Check your network and try again.',
   TimeoutFailure() => 'The request took too long. Try again.',
   // A guard clause, so an auth problem does not read as "our servers are down".
-  // The API key currently shipped in `Endpoints` returns 401, which makes this
-  // the branch the app actually hits today. Phase 4 owns the key itself.
+  //
+  // This comment used to add "the API key shipped in `Endpoints` returns 401,
+  // which makes this the branch the app actually hits today". Phase 4 measured
+  // that and it was false — `/v1/breeds` answers 200 anonymously, so this branch
+  // is not the common case. It stays because a wrong key is still possible; it is
+  // just not what the app does.
   ServerFailure(:final statusCode)
       when statusCode == 401 || statusCode == 403 =>
     'Could not authenticate with the cat service.',
@@ -127,5 +187,9 @@ String messageFor(CatsFailure failure) => switch (failure) {
     'The cat service failed ($statusCode). Try again later.',
   UnexpectedResponseFailure() =>
     'The cat service returned something unexpected.',
+  // No id in the copy: it is an internal key, and the user did not type it — they
+  // followed a link. Retrying is pointless here, which is also why
+  // `isRetryable` says no.
+  NotFoundFailure() => 'We could not find that cat breed.',
   UnknownFailure() => 'Something went wrong. Try again.',
 };

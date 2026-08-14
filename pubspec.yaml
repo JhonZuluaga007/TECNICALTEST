@@ -32,6 +32,18 @@ dependencies:
   flutter_screenutil: ^5.9.0
   http: ^1.1.0
   flutter_bloc: ^9.1.1
+  # Phase 6. It persists the bloc's `searchHistory`, but it earns its place twice:
+  # its `Storage` interface (read/write/delete/clear/close) is a perfectly good
+  # key-value store, so the breeds disk cache reuses it instead of pulling in a
+  # second persistence package. `core/storage/` wraps it so the data layer never
+  # imports this package — it re-exports `package:bloc`, which has no business
+  # being visible from `data/`.
+  hydrated_bloc: ^11.0.0
+  # Only to hand `HydratedStorage.build` a directory, in `main.dart`. It was
+  # already here as a transitive dependency of google_fonts; Phase 7 removes that
+  # one, and this promotion to a direct dependency is what keeps the storage
+  # working when it does.
+  path_provider: ^2.1.6
   get_it: ^9.2.1
   injectable: ^2.7.1
   google_fonts: ^8.2.1

@@ -2,8 +2,12 @@ import 'dart:async';
 
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
+import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:tecnical_test_pragma/core/storage/hydrated_key_value_store.dart';
+import 'package:tecnical_test_pragma/core/storage/key_value_store.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/data/datasource/landing_cats_data_source.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/data/datasource/landing_cats_local_data_source.dart';
 
 import 'injector.config.dart';
 
@@ -11,7 +15,27 @@ import 'injector.config.dart';
 /// code goes through [Injector] instead.
 final GetIt getIt = GetIt.instance;
 
-@InjectableInit(preferRelativeImports: false)
+/// [InjectableInit.throwOnMissingDependencies] is set because it **defaults to
+/// `false`**, and that default quietly undercut the reason Phase 5 chose
+/// injectable over kiwi.
+///
+/// That phase's argument was "a missing binding becomes a build failure instead of
+/// a runtime error on the screen that needed it". Measured in Phase 6 against
+/// `injectable_annotations.dart` and `resolver_utils.dart`: unresolved
+/// dependencies are collected into a list of **printed messages**, the build
+/// succeeds, and the generated `gh<T>()` throws when something first resolves it.
+/// A warning in a wall of build output is not what that claim promised. With this
+/// flag it is.
+///
+/// [InjectableInit.ignoreUnregisteredTypes] then has to name [KeyValueStore],
+/// because it genuinely is registered outside the generated graph — it wraps the
+/// `Storage` that [Injector.setup] receives from its caller. Declaring the one
+/// exception explicitly is the point: everything not on this list is now an error.
+@InjectableInit(
+  preferRelativeImports: false,
+  throwOnMissingDependencies: true,
+  ignoreUnregisteredTypes: [KeyValueStore],
+)
 void _configure() => getIt.init();
 
 /// Closes the HTTP client when the container is reset or the registration is
@@ -30,6 +54,13 @@ void _configure() => getIt.init();
 FutureOr<void> closeHttpClient(http.Client client) {
   client.close();
 }
+
+/// Closes the storage box when the container is reset.
+///
+/// Public for the same mechanical reason as [closeHttpClient], and registered for
+/// the same principle: the container closes what it holds. Hive keeps a file
+/// handle open, so leaking one between test files is not merely untidy.
+FutureOr<void> closeStorage(Storage storage) => storage.close();
 
 /// Registrations that cannot be expressed as an annotation on their own class.
 ///
@@ -53,6 +84,14 @@ abstract class AppModule {
   @lazySingleton
   LandingCatsDataSource dataSource(http.Client client) =>
       LandingCatsDataSource(client: client);
+
+  /// Here rather than annotated, for exactly the same reason as the remote data
+  /// source above: `ttl` and `clock` are test seams, not dependencies, and
+  /// injectable would try to resolve a `Duration` and a `DateTime Function()` from
+  /// the container. Naming only `store` keeps their production defaults.
+  @lazySingleton
+  LandingCatsLocalDataSource localDataSource(KeyValueStore store) =>
+      LandingCatsLocalDataSource(store: store);
 }
 
 /// The app's composition root.
@@ -75,8 +114,29 @@ abstract final class Injector {
   ///
   /// [httpClient] exists so integration tests can inject a `MockClient` and boot
   /// the whole app without network access.
-  static Future<void> setup({http.Client? httpClient}) async {
+  ///
+  /// [storage] is **required**, and deliberately not optional-with-an-in-memory
+  /// default. The default that is right for tests is exactly wrong in production:
+  /// forgetting to pass one would not fail, it would silently stop persisting the
+  /// user's data. Same reasoning as `searchHistory` being `required` with no
+  /// default since Phase 3 — make the omission a compile error.
+  ///
+  /// It comes from the caller rather than being built here because
+  /// `HydratedStorage.build` needs `path_provider`, which throws
+  /// `MissingPluginException` under `flutter test`. `main.dart` builds the real
+  /// one; tests pass a map.
+  static Future<void> setup({
+    required Storage storage,
+    http.Client? httpClient,
+  }) async {
     await getIt.reset();
+
+    // Registered BEFORE `_configure()`, so the generated graph never sees a gap.
+    // Order does not strictly matter — every generated registration is lazy — but
+    // relying on that would make the two files depend on each other's internals.
+    getIt.registerSingleton<Storage>(storage, dispose: closeStorage);
+    getIt.registerSingleton<KeyValueStore>(HydratedKeyValueStore(storage));
+
     _configure();
 
     if (httpClient == null) return;

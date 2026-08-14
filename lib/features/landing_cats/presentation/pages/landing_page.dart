@@ -23,13 +23,20 @@ class LandingPage extends StatefulWidget {
 class _LandingPageState extends State<LandingPage> {
   final ScrollController scrollController = ScrollController();
 
-  @override
-  void initState() {
-    super.initState();
-    // Phase 6 moves this dispatch out of `initState` (where it re-fetches on
-    // EVERY return from the detail page) and into the bloc's creation.
-    BlocProvider.of<LandingCatsBloc>(context).add(const AllCatsEvent());
-  }
+  // There is no `initState` here any more.
+  //
+  // It used to hold `BlocProvider.of<LandingCatsBloc>(context).add(const
+  // AllCatsEvent())`, and that was a bug with a long tail: this page is
+  // re-created by `go_router` on every return from the detail screen, so every
+  // back navigation refetched the whole breed list. Phase 4 made that one request
+  // instead of 66, which made it cheap enough to stop being obvious — but it was
+  // still a network round trip to redisplay a list the app already had.
+  //
+  // The dispatch now happens once, where the bloc is created, in `main.dart`. Two
+  // consequences worth knowing: the fetch starts during the splash rather than
+  // after it, so those five seconds do something; and this page became a pure
+  // consumer, which is why widget tests dispatch explicitly instead of relying on
+  // a side effect of mounting.
 
   @override
   void dispose() {
@@ -44,10 +51,15 @@ class _LandingPageState extends State<LandingPage> {
     final wColor = AppCatsColor();
     return BlocBuilder<LandingCatsBloc, LandingCatsState>(
       builder: (context, state) {
-        // The breed list now exists on exactly one variant, so the app bar has to
-        // ask for it rather than assume it is always there.
+        // The breed list exists on only some variants, so the app bar has to ask
+        // for it rather than assume it is always there.
+        //
+        // `CatsStale` carries breeds too, so the search screen keeps working
+        // offline. Leaving it out of this pattern would have been a silent
+        // regression: a full list on screen and an empty search behind it, with
+        // nothing throwing.
         final breeds = switch (state) {
-          CatsLoaded(:final breeds) => breeds,
+          CatsLoaded(:final breeds) || CatsStale(:final breeds) => breeds,
           _ => const <CatBreedEntity>[],
         };
 
@@ -120,10 +132,21 @@ class _LandingPageState extends State<LandingPage> {
                 CatsInitial() || CatsLoading() => const CatsLoadingView(),
                 CatsLoaded(breeds: []) => const CatsEmptyView(),
                 CatsLoaded(:final breeds) => _breedList(context, breeds),
+                // Phase 6's branch, and the compiler is what put it here: adding
+                // `CatsStale` to the sealed state broke this switch until it
+                // existed. The list is rendered exactly as in the loaded case,
+                // with a strip above it — the data is real, just old.
+                CatsStale(:final breeds, :final failure) => _breedList(
+                  context,
+                  breeds,
+                  banner: StaleBanner(
+                    failure: failure,
+                    onRetry: () => _refetch(context),
+                  ),
+                ),
                 CatsError(:final failure) => CatsErrorView(
                   failure: failure,
-                  onRetry: () =>
-                      context.read<LandingCatsBloc>().add(const AllCatsEvent()),
+                  onRetry: () => _refetch(context),
                 ),
               },
             ),
@@ -133,8 +156,20 @@ class _LandingPageState extends State<LandingPage> {
     );
   }
 
-  Widget _breedList(BuildContext context, List<CatBreedEntity> breeds) {
-    return Scrollbar(
+  void _refetch(BuildContext context) =>
+      context.read<LandingCatsBloc>().add(const AllCatsEvent());
+
+  /// The list, optionally under a [banner].
+  ///
+  /// The banner sits outside the `ListView` rather than as its first item so it
+  /// stays put while the list scrolls — a notice that scrolls away is a notice the
+  /// user will not see.
+  Widget _breedList(
+    BuildContext context,
+    List<CatBreedEntity> breeds, {
+    Widget? banner,
+  }) {
+    final list = Scrollbar(
       controller: scrollController,
       child: ListView.separated(
         controller: scrollController,
@@ -151,13 +186,25 @@ class _LandingPageState extends State<LandingPage> {
             countryOrigin: breed.origin,
             intelligent: breed.intelligence,
             onPressed: () {
-              context.goNamed(detailPage, extra: breed);
+              // Phase 6: the id, not the entity. Same destination, but this one
+              // survives being written down as a URL.
+              context.goNamed(detailPage, pathParameters: {'id': breed.id});
             },
           );
         },
         separatorBuilder: (BuildContext context, int index) =>
             SizedBox(height: 12.h),
       ),
+    );
+
+    if (banner == null) return list;
+
+    return Column(
+      children: [
+        banner,
+        SizedBox(height: 12.h),
+        Expanded(child: list),
+      ],
     );
   }
 }

@@ -43,6 +43,15 @@ sealed class CatsFailure with _$CatsFailure implements Exception {
   const factory CatsFailure.unexpectedResponse({required String detail}) =
       UnexpectedResponseFailure;
 
+  /// The breed asked for does not exist.
+  ///
+  /// Added in Phase 6, when the detail screen stopped receiving a whole
+  /// `CatBreedEntity` through `go_router`'s `extra` and started receiving an id
+  /// from the URL. An id can now be wrong — a stale deep link, a typed URL, a
+  /// breed the API dropped — and that is a distinct outcome from "the request
+  /// failed": there is nothing to retry, and the copy should say so.
+  const factory CatsFailure.notFound({required String id}) = NotFoundFailure;
+
   /// Anything we did not anticipate.
   ///
   /// Its existence is what lets the repository be a total function: nothing above
