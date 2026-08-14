@@ -10,13 +10,15 @@ import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
 /// Retryable: no connection, a timeout, and 5xx — all transient by definition.
 ///
 /// Not retryable: any 4xx (the request itself is wrong; a missing key will still
-/// be missing), a malformed payload (it will parse identically next time), and
+/// be missing), a malformed payload (it will parse identically next time),
+/// [NotFoundFailure] (the id will be just as absent next time), and
 /// [UnknownFailure] (by definition we do not know it is safe to repeat).
 bool isRetryable(CatsFailure failure) => switch (failure) {
   NetworkFailure() => true,
   TimeoutFailure() => true,
   ServerFailure(:final statusCode) => statusCode >= 500,
   UnexpectedResponseFailure() => false,
+  NotFoundFailure() => false,
   UnknownFailure() => false,
 };
 

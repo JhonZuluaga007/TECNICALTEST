@@ -10,21 +10,32 @@ void main() {
     test('gives every failure variant its own message', () {
       // No two causes share copy: that is the entire point of having replaced
       // `InvalidData`'s single interpolated string with a sealed hierarchy.
+      //
+      // **This list is hand-written and cannot enforce its own completeness** —
+      // Phase 6 found it asserting `hasLength(5)` while `CatsFailure` had grown a
+      // sixth variant, i.e. green and no longer meaning what its name says. What
+      // does enforce it is the compiler: `messageFor` is an exhaustive `switch`
+      // over a sealed type, so a new variant breaks the build, and
+      // `cats_failure_test.dart`'s own switch breaks with it. This test only
+      // checks that the messages are distinct and non-empty.
       final messages = <String>{
         messageFor(const NetworkFailure()),
         messageFor(const TimeoutFailure()),
         messageFor(const ServerFailure(statusCode: 500)),
         messageFor(const UnexpectedResponseFailure(detail: 'x')),
+        messageFor(const NotFoundFailure(id: 'abys')),
         messageFor(const UnknownFailure(detail: 'x')),
       };
 
-      expect(messages, hasLength(5));
+      expect(messages, hasLength(6));
       expect(messages, everyElement(isNotEmpty));
     });
 
     test('401 and 403 read as authentication, not as a broken server', () {
-      // The guard clause. It matters in practice: the API key hardcoded in
-      // `Endpoints` returns 401, so this is the message the app shows today.
+      // The guard clause. This comment used to claim the hardcoded key returned
+      // 401 "so this is the message the app shows today"; Phase 4 measured it and
+      // it was false. The branch still earns its place — a wrong key is possible —
+      // it is just not the common path.
       const auth = 'Could not authenticate with the cat service.';
 
       expect(messageFor(const ServerFailure(statusCode: 401)), auth);

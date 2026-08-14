@@ -41,8 +41,32 @@ sealed class LandingCatsState with _$LandingCatsState {
     required List<String> searchHistory,
   }) = CatsLoaded;
 
-  /// The fetch failed, carrying the **typed** failure so the error view can show
-  /// a different message per cause instead of one generic string.
+  /// Breeds from an expired cache, because the refresh failed.
+  ///
+  /// New in Phase 6, and the variant the README promised would force every
+  /// `switch` over this type to grow a branch.
+  ///
+  /// **It is worth naming the tension.** Phase 3 argued that the value of the
+  /// sealed modelling was that "loaded with an error" could not be expressed: the
+  /// old state carried breeds, a failure and a status flag all at once, and the UI
+  /// picked with an `is` check that had an implicit `else` — which is how an API
+  /// failure showed a spinner forever. This variant makes that combination
+  /// expressible again, on purpose. The difference is that it is now one named
+  /// state with a required branch and a test, rather than an accidental product of
+  /// three always-present fields. The compiler still refuses to let anyone ignore
+  /// it.
+  ///
+  /// What it buys: the app works offline. Before Phase 6 a failed refresh showed
+  /// an error screen while a complete list of cat breeds sat on disk, unused.
+  const factory LandingCatsState.stale({
+    required List<CatBreedEntity> breeds,
+    required CatsFailure failure,
+    required List<String> searchHistory,
+  }) = CatsStale;
+
+  /// The fetch failed **and there is nothing to show** — no cache, not even an
+  /// expired one. Since Phase 6 this is a narrower state than it used to be:
+  /// anything with breeds in hand becomes [CatsStale] instead.
   const factory LandingCatsState.error({
     required CatsFailure failure,
     required List<String> searchHistory,

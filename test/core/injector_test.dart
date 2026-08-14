@@ -2,12 +2,18 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:tecnical_test_pragma/core/injector/injector.dart';
+import 'package:tecnical_test_pragma/core/storage/key_value_store.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/data/datasource/landing_cats_data_source.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/data/datasource/landing_cats_local_data_source.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/data/repository/landing_cats_repository_impl.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/repository/landing_cats_repository.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_all_cats_use_case.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_by_id_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_image_use_case.dart';
+
+import '../helpers/in_memory_key_value_store.dart';
 
 /// A registration mistake is a runtime-only crash that no other kind of test
 /// catches. Cheap and high value.
@@ -27,17 +33,22 @@ void main() {
 
   group('Injector', () {
     test('resolves the whole graph without throwing', () async {
-      await Injector.setup();
+      await Injector.setup(storage: InMemoryStorage());
 
       expect(Injector.resolve<http.Client>(), isNotNull);
       expect(Injector.resolve<LandingCatsDataSource>(), isNotNull);
       expect(Injector.resolve<LandingCatsRepository>(), isNotNull);
       expect(Injector.resolve<GetAllCatsUseCase>(), isNotNull);
       expect(Injector.resolve<GetBreedImageUseCase>(), isNotNull);
+      // Phase 6 additions.
+      expect(Injector.resolve<Storage>(), isNotNull);
+      expect(Injector.resolve<KeyValueStore>(), isNotNull);
+      expect(Injector.resolve<LandingCatsLocalDataSource>(), isNotNull);
+      expect(Injector.resolve<GetBreedByIdUseCase>(), isNotNull);
     });
 
     test('binds the repository abstraction to its implementation', () async {
-      await Injector.setup();
+      await Injector.setup(storage: InMemoryStorage());
 
       expect(
         Injector.resolve<LandingCatsRepository>(),
@@ -46,7 +57,7 @@ void main() {
     });
 
     test('singletons are shared and use cases are not', () async {
-      await Injector.setup();
+      await Injector.setup(storage: InMemoryStorage());
 
       // One connection pool for the whole app.
       expect(
@@ -86,14 +97,14 @@ void main() {
       // without the `reset()` that `setup()` performs, a second boot in the same
       // isolate crashes — which is exactly what happens once more than one test file
       // touches it. kiwi needed the same guard, via `container.clear()`.
-      await Injector.setup();
+      await Injector.setup(storage: InMemoryStorage());
 
-      await expectLater(Injector.setup(), completes);
+      await expectLater(Injector.setup(storage: InMemoryStorage()), completes);
       expect(Injector.resolve<GetAllCatsUseCase>(), isNotNull);
     });
 
     test('reset() leaves the container empty', () async {
-      await Injector.setup();
+      await Injector.setup(storage: InMemoryStorage());
       await Injector.reset();
 
       expect(
@@ -107,7 +118,7 @@ void main() {
     test('the injected client is what the container hands out', () async {
       final client = _RecordingClient();
 
-      await Injector.setup(httpClient: client);
+      await Injector.setup(storage: InMemoryStorage(), httpClient: client);
 
       expect(Injector.resolve<http.Client>(), same(client));
     });
@@ -121,7 +132,7 @@ void main() {
         // what the end-to-end test depends on. Nothing pinned that until now.
         final client = _RecordingClient();
 
-        await Injector.setup(httpClient: client);
+        await Injector.setup(storage: InMemoryStorage(), httpClient: client);
         final dataSource = Injector.resolve<LandingCatsDataSource>();
 
         // `_client` is private, so this goes through observable behaviour: any
@@ -137,7 +148,10 @@ void main() {
       // being annotated on the class: `timeout` and `retryDelays` are test seams,
       // and injectable would have tried to resolve a `Duration` and a
       // `List<Duration>` from the container. Naming only `client` keeps these.
-      await Injector.setup(httpClient: _RecordingClient());
+      await Injector.setup(
+        storage: InMemoryStorage(),
+        httpClient: _RecordingClient(),
+      );
 
       final dataSource = Injector.resolve<LandingCatsDataSource>();
 
@@ -153,7 +167,7 @@ void main() {
       // files. This test is the concrete thing the migration bought, and it is why
       // `setup` and `reset` are asynchronous at all.
       final client = _RecordingClient();
-      await Injector.setup(httpClient: client);
+      await Injector.setup(storage: InMemoryStorage(), httpClient: client);
       expect(client.closed, isFalse);
 
       await Injector.reset();
@@ -165,9 +179,12 @@ void main() {
       // The same guarantee on the path tests actually take: every test file calls
       // `setup()` again rather than resetting explicitly.
       final first = _RecordingClient();
-      await Injector.setup(httpClient: first);
+      await Injector.setup(storage: InMemoryStorage(), httpClient: first);
 
-      await Injector.setup(httpClient: _RecordingClient());
+      await Injector.setup(
+        storage: InMemoryStorage(),
+        httpClient: _RecordingClient(),
+      );
 
       expect(first.closed, isTrue);
     });
@@ -230,7 +247,7 @@ void main() {
       // it does.
       final client = _RecordingClient();
 
-      await Injector.setup(httpClient: client);
+      await Injector.setup(storage: InMemoryStorage(), httpClient: client);
 
       expect(
         client.requests,
@@ -255,7 +272,7 @@ void main() {
       // makes the registration observable: one request for two resolves, or the cache
       // is per-instance and therefore useless.
       final client = _RecordingClient();
-      await Injector.setup(httpClient: client);
+      await Injector.setup(storage: InMemoryStorage(), httpClient: client);
 
       await Injector.resolve<LandingCatsRepository>().getBreedImageUrl('abc');
       await Injector.resolve<LandingCatsRepository>().getBreedImageUrl('abc');
@@ -265,6 +282,99 @@ void main() {
         hasLength(1),
         reason: 'a factory registration would make this 2',
       );
+    });
+  });
+
+  group('Injector storage', () {
+    test('the injected storage is what the container hands out', () async {
+      final storage = InMemoryStorage();
+
+      await Injector.setup(storage: storage);
+
+      expect(Injector.resolve<Storage>(), same(storage));
+    });
+
+    test('the KeyValueStore reads and writes the same box', () async {
+      // The adapter is three forwarding methods, and this is the assertion that
+      // they forward to the storage the app was given rather than to some other
+      // instance. Without it the cache would write into a store nothing reads.
+      final storage = InMemoryStorage();
+      await Injector.setup(storage: storage);
+
+      await Injector.resolve<KeyValueStore>().write('k', 'v');
+
+      expect(storage.values['k'], 'v');
+      expect(Injector.resolve<KeyValueStore>().read('k'), 'v');
+    });
+
+    test('the cache reaches the store, not just the container', () async {
+      // The storage equivalent of `the injected client reaches the datasource`.
+      // Resolving a `KeyValueStore` and getting the right object back does not
+      // prove the **local data source** was built with it, which is what every
+      // caching test depends on.
+      final storage = InMemoryStorage();
+      await Injector.setup(storage: storage);
+
+      await Injector.resolve<LandingCatsLocalDataSource>().writeBreeds(
+        const [],
+      );
+
+      expect(storage.values[LandingCatsLocalDataSource.breedsKey], isNotNull);
+    });
+
+    test('the local data source keeps its production defaults', () async {
+      // Why it is registered in a module rather than annotated on the class:
+      // `ttl` and `clock` are test seams, and injectable would try to resolve a
+      // `Duration` and a `DateTime Function()` from the container.
+      await Injector.setup(storage: InMemoryStorage());
+
+      expect(
+        Injector.resolve<LandingCatsLocalDataSource>().ttl,
+        const Duration(hours: 12),
+      );
+    });
+
+    test('reset() closes the storage', () async {
+      // Hive holds a file handle open, so this is not merely tidy. Same guarantee
+      // as `reset() closes the http client`, and the same reason `setup` and
+      // `reset` are asynchronous at all.
+      final storage = InMemoryStorage();
+      await Injector.setup(storage: storage);
+      expect(storage.closed, isFalse);
+
+      await Injector.reset();
+
+      expect(storage.closed, isTrue);
+    });
+
+    test('closeStorage closes the storage it is given', () async {
+      final storage = InMemoryStorage();
+
+      await closeStorage(storage);
+
+      expect(storage.closed, isTrue);
+    });
+
+    test('the generated config demands every binding', () async {
+      // Read from the source, because there is no runtime handle on a build-time
+      // setting — the same technique used above for the client's dispose.
+      //
+      // Phase 5 sold injectable on "a missing binding is a build failure instead
+      // of a runtime error". Phase 6 measured that and it was **not true by
+      // default**: `throwOnMissingDependencies` is `false`, so an unregistered
+      // type is a printed warning and the generated `gh<T>()` throws later, on the
+      // screen that needed it — precisely the kiwi behaviour the migration was
+      // meant to leave behind.
+      final source = File('lib/core/injector/injector.dart').readAsStringSync();
+
+      expect(
+        source,
+        contains('throwOnMissingDependencies: true'),
+        reason: "without it, Phase 5's central claim is false",
+      );
+      // And the one deliberate exception is declared rather than tolerated: the
+      // store comes from `setup`, outside the generated graph.
+      expect(source, contains('ignoreUnregisteredTypes: [KeyValueStore]'));
     });
   });
 }

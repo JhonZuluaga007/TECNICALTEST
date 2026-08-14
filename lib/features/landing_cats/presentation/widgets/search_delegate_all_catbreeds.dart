@@ -95,7 +95,8 @@ class SearchDelegateAllCatbreeds extends SearchDelegate<List<CatBreedEntity>?> {
           image: BreedImage(referenceImageId: breed.referenceImageId),
           countryOrigin: breed.origin,
           intelligent: breed.intelligence,
-          onPressed: () => context.goNamed(detailPage, extra: breed),
+          onPressed: () =>
+              context.goNamed(detailPage, pathParameters: {'id': breed.id}),
         );
       },
     );

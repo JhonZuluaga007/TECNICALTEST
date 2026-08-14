@@ -344,13 +344,14 @@ extension LandingCatsStatePatterns on LandingCatsState {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( CatsInitial value)?  initial,TResult Function( CatsLoading value)?  loading,TResult Function( CatsLoaded value)?  loaded,TResult Function( CatsError value)?  error,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( CatsInitial value)?  initial,TResult Function( CatsLoading value)?  loading,TResult Function( CatsLoaded value)?  loaded,TResult Function( CatsStale value)?  stale,TResult Function( CatsError value)?  error,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case CatsInitial() when initial != null:
 return initial(_that);case CatsLoading() when loading != null:
 return loading(_that);case CatsLoaded() when loaded != null:
-return loaded(_that);case CatsError() when error != null:
+return loaded(_that);case CatsStale() when stale != null:
+return stale(_that);case CatsError() when error != null:
 return error(_that);case _:
   return orElse();
 
@@ -369,13 +370,14 @@ return error(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( CatsInitial value)  initial,required TResult Function( CatsLoading value)  loading,required TResult Function( CatsLoaded value)  loaded,required TResult Function( CatsError value)  error,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( CatsInitial value)  initial,required TResult Function( CatsLoading value)  loading,required TResult Function( CatsLoaded value)  loaded,required TResult Function( CatsStale value)  stale,required TResult Function( CatsError value)  error,}){
 final _that = this;
 switch (_that) {
 case CatsInitial():
 return initial(_that);case CatsLoading():
 return loading(_that);case CatsLoaded():
-return loaded(_that);case CatsError():
+return loaded(_that);case CatsStale():
+return stale(_that);case CatsError():
 return error(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
@@ -390,13 +392,14 @@ return error(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( CatsInitial value)?  initial,TResult? Function( CatsLoading value)?  loading,TResult? Function( CatsLoaded value)?  loaded,TResult? Function( CatsError value)?  error,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( CatsInitial value)?  initial,TResult? Function( CatsLoading value)?  loading,TResult? Function( CatsLoaded value)?  loaded,TResult? Function( CatsStale value)?  stale,TResult? Function( CatsError value)?  error,}){
 final _that = this;
 switch (_that) {
 case CatsInitial() when initial != null:
 return initial(_that);case CatsLoading() when loading != null:
 return loading(_that);case CatsLoaded() when loaded != null:
-return loaded(_that);case CatsError() when error != null:
+return loaded(_that);case CatsStale() when stale != null:
+return stale(_that);case CatsError() when error != null:
 return error(_that);case _:
   return null;
 
@@ -414,12 +417,13 @@ return error(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( List<String> searchHistory)?  initial,TResult Function( List<String> searchHistory)?  loading,TResult Function( List<CatBreedEntity> breeds,  List<String> searchHistory)?  loaded,TResult Function( CatsFailure failure,  List<String> searchHistory)?  error,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( List<String> searchHistory)?  initial,TResult Function( List<String> searchHistory)?  loading,TResult Function( List<CatBreedEntity> breeds,  List<String> searchHistory)?  loaded,TResult Function( List<CatBreedEntity> breeds,  CatsFailure failure,  List<String> searchHistory)?  stale,TResult Function( CatsFailure failure,  List<String> searchHistory)?  error,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case CatsInitial() when initial != null:
 return initial(_that.searchHistory);case CatsLoading() when loading != null:
 return loading(_that.searchHistory);case CatsLoaded() when loaded != null:
-return loaded(_that.breeds,_that.searchHistory);case CatsError() when error != null:
+return loaded(_that.breeds,_that.searchHistory);case CatsStale() when stale != null:
+return stale(_that.breeds,_that.failure,_that.searchHistory);case CatsError() when error != null:
 return error(_that.failure,_that.searchHistory);case _:
   return orElse();
 
@@ -438,12 +442,13 @@ return error(_that.failure,_that.searchHistory);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( List<String> searchHistory)  initial,required TResult Function( List<String> searchHistory)  loading,required TResult Function( List<CatBreedEntity> breeds,  List<String> searchHistory)  loaded,required TResult Function( CatsFailure failure,  List<String> searchHistory)  error,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( List<String> searchHistory)  initial,required TResult Function( List<String> searchHistory)  loading,required TResult Function( List<CatBreedEntity> breeds,  List<String> searchHistory)  loaded,required TResult Function( List<CatBreedEntity> breeds,  CatsFailure failure,  List<String> searchHistory)  stale,required TResult Function( CatsFailure failure,  List<String> searchHistory)  error,}) {final _that = this;
 switch (_that) {
 case CatsInitial():
 return initial(_that.searchHistory);case CatsLoading():
 return loading(_that.searchHistory);case CatsLoaded():
-return loaded(_that.breeds,_that.searchHistory);case CatsError():
+return loaded(_that.breeds,_that.searchHistory);case CatsStale():
+return stale(_that.breeds,_that.failure,_that.searchHistory);case CatsError():
 return error(_that.failure,_that.searchHistory);}
 }
 /// A variant of `when` that fallback to returning `null`
@@ -458,12 +463,13 @@ return error(_that.failure,_that.searchHistory);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( List<String> searchHistory)?  initial,TResult? Function( List<String> searchHistory)?  loading,TResult? Function( List<CatBreedEntity> breeds,  List<String> searchHistory)?  loaded,TResult? Function( CatsFailure failure,  List<String> searchHistory)?  error,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( List<String> searchHistory)?  initial,TResult? Function( List<String> searchHistory)?  loading,TResult? Function( List<CatBreedEntity> breeds,  List<String> searchHistory)?  loaded,TResult? Function( List<CatBreedEntity> breeds,  CatsFailure failure,  List<String> searchHistory)?  stale,TResult? Function( CatsFailure failure,  List<String> searchHistory)?  error,}) {final _that = this;
 switch (_that) {
 case CatsInitial() when initial != null:
 return initial(_that.searchHistory);case CatsLoading() when loading != null:
 return loading(_that.searchHistory);case CatsLoaded() when loaded != null:
-return loaded(_that.breeds,_that.searchHistory);case CatsError() when error != null:
+return loaded(_that.breeds,_that.searchHistory);case CatsStale() when stale != null:
+return stale(_that.breeds,_that.failure,_that.searchHistory);case CatsError() when error != null:
 return error(_that.failure,_that.searchHistory);case _:
   return null;
 
@@ -694,6 +700,97 @@ as List<String>,
 }
 
 
+}
+
+/// @nodoc
+
+
+class CatsStale implements LandingCatsState {
+  const CatsStale({required final  List<CatBreedEntity> breeds, required this.failure, required final  List<String> searchHistory}): _breeds = breeds,_searchHistory = searchHistory;
+  
+
+ final  List<CatBreedEntity> _breeds;
+ List<CatBreedEntity> get breeds {
+  if (_breeds is EqualUnmodifiableListView) return _breeds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_breeds);
+}
+
+ final  CatsFailure failure;
+ final  List<String> _searchHistory;
+@override List<String> get searchHistory {
+  if (_searchHistory is EqualUnmodifiableListView) return _searchHistory;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_searchHistory);
+}
+
+
+/// Create a copy of LandingCatsState
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CatsStaleCopyWith<CatsStale> get copyWith => _$CatsStaleCopyWithImpl<CatsStale>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatsStale&&const DeepCollectionEquality().equals(other._breeds, _breeds)&&(identical(other.failure, failure) || other.failure == failure)&&const DeepCollectionEquality().equals(other._searchHistory, _searchHistory));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_breeds),failure,const DeepCollectionEquality().hash(_searchHistory));
+
+@override
+String toString() {
+  return 'LandingCatsState.stale(breeds: $breeds, failure: $failure, searchHistory: $searchHistory)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CatsStaleCopyWith<$Res> implements $LandingCatsStateCopyWith<$Res> {
+  factory $CatsStaleCopyWith(CatsStale value, $Res Function(CatsStale) _then) = _$CatsStaleCopyWithImpl;
+@override @useResult
+$Res call({
+ List<CatBreedEntity> breeds, CatsFailure failure, List<String> searchHistory
+});
+
+
+$CatsFailureCopyWith<$Res> get failure;
+
+}
+/// @nodoc
+class _$CatsStaleCopyWithImpl<$Res>
+    implements $CatsStaleCopyWith<$Res> {
+  _$CatsStaleCopyWithImpl(this._self, this._then);
+
+  final CatsStale _self;
+  final $Res Function(CatsStale) _then;
+
+/// Create a copy of LandingCatsState
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? breeds = null,Object? failure = null,Object? searchHistory = null,}) {
+  return _then(CatsStale(
+breeds: null == breeds ? _self._breeds : breeds // ignore: cast_nullable_to_non_nullable
+as List<CatBreedEntity>,failure: null == failure ? _self.failure : failure // ignore: cast_nullable_to_non_nullable
+as CatsFailure,searchHistory: null == searchHistory ? _self._searchHistory : searchHistory // ignore: cast_nullable_to_non_nullable
+as List<String>,
+  ));
+}
+
+/// Create a copy of LandingCatsState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CatsFailureCopyWith<$Res> get failure {
+  
+  return $CatsFailureCopyWith<$Res>(_self.failure, (value) {
+    return _then(_self.copyWith(failure: value));
+  });
+}
 }
 
 /// @nodoc

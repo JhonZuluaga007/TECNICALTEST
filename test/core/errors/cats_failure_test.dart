@@ -60,6 +60,7 @@ void main() {
         TimeoutFailure() => 'timeout',
         ServerFailure(:final statusCode) => 'server:$statusCode',
         UnexpectedResponseFailure() => 'unexpected',
+        NotFoundFailure(:final id) => 'notFound:$id',
         UnknownFailure() => 'unknown',
       };
 
@@ -67,6 +68,7 @@ void main() {
       expect(kind(const TimeoutFailure()), 'timeout');
       expect(kind(const ServerFailure(statusCode: 401)), 'server:401');
       expect(kind(const UnexpectedResponseFailure(detail: 'x')), 'unexpected');
+      expect(kind(const NotFoundFailure(id: 'abys')), 'notFound:abys');
       expect(kind(const UnknownFailure(detail: 'x')), 'unknown');
     });
   });

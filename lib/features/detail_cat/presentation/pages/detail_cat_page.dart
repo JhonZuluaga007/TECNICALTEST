@@ -1,24 +1,57 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/my_app_scaffold.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
 import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
+import 'package:tecnical_test_pragma/features/detail_cat/presentation/bloc/detail_cat_cubit.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/widgets/list_characteristics_catbreeds_widget.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
-// The detail screen already depends on the landing feature for the entity it is
-// handed; `BreedImage` follows the same dependency. Phase 9 promotes it to
-// `core/common_widgets/` if a third consumer shows up.
+import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_by_id_use_case.dart';
+// The detail screen already depends on the landing feature for the entity it
+// shows; `BreedImage` and the status views follow the same dependency. Phase 9
+// promotes them to `core/common_widgets/` if a third consumer shows up.
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_image.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/landing_status_views.dart';
 
-class DetailCatPage extends StatefulWidget {
-  const DetailCatPage({super.key, required this.catBreedEntity});
-  final CatBreedEntity catBreedEntity;
+/// The breed detail screen.
+///
+/// Takes a [breedId], not a `CatBreedEntity`. Phase 6 changed that: the entity
+/// used to arrive through `go_router`'s `extra`, which is not reconstructible from
+/// a URL — a deep link or a process restoration arrived with `state.extra == null`
+/// and `(state.extra!) as CatBreedEntity` threw. The route carried a `redirect` to
+/// send those to the home screen instead of crashing; that workaround is gone,
+/// because the id in the path is all this screen needs.
+class DetailCatPage extends StatelessWidget {
+  const DetailCatPage({super.key, required this.breedId});
+
+  final String breedId;
 
   @override
-  State<DetailCatPage> createState() => _DetailCatPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      // `..load` in the `create` rather than in an `initState`: the cubit is built
+      // once per route, so there is no re-entry to guard against — which is
+      // exactly the mistake the landing page's `initState` used to make.
+      create: (_) => DetailCatCubit(
+        getBreedByIdUseCase: context.read<GetBreedByIdUseCase>(),
+      )..load(breedId),
+      child: _DetailCatView(breedId: breedId),
+    );
+  }
 }
 
-class _DetailCatPageState extends State<DetailCatPage> {
+class _DetailCatView extends StatefulWidget {
+  const _DetailCatView({required this.breedId});
+
+  /// Carried down only so Retry can re-run the same lookup.
+  final String breedId;
+
+  @override
+  State<_DetailCatView> createState() => _DetailCatViewState();
+}
+
+class _DetailCatViewState extends State<_DetailCatView> {
   final ScrollController scrollController = ScrollController();
 
   @override
@@ -30,23 +63,61 @@ class _DetailCatPageState extends State<DetailCatPage> {
   @override
   Widget build(BuildContext context) {
     final wColor = AppCatsColor();
-    return MyAppScaffold(
-      paddingColumn: EdgeInsets.symmetric(horizontal: 15.w),
-      mainAxisAlignment: MainAxisAlignment.start,
+
+    return BlocBuilder<DetailCatCubit, DetailCatState>(
+      builder: (context, state) {
+        return MyAppScaffold(
+          paddingColumn: EdgeInsets.symmetric(horizontal: 15.w),
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          appBar: AppBar(
+            automaticallyImplyLeading: true,
+            title: TextWidget(
+              // The title has to survive not knowing the breed yet. It used to be
+              // `widget.catBreedEntity.name`, which was always available because
+              // the whole entity came in through the route.
+              text: switch (state) {
+                DetailReady(:final breed) => breed.name,
+                _ => 'Catbreeds',
+              },
+              fontSize: 24,
+              colorText: wColor.black,
+            ),
+          ),
+          children: [
+            Expanded(
+              child: switch (state) {
+                DetailLoading() => const CatsLoadingView(),
+                DetailReady(:final breed) => _breed(context, breed, wColor),
+                // Reuses the landing screen's error view, callback and all. The
+                // retry re-runs the lookup rather than navigating away, which is
+                // the useful action for a network failure — and harmless for a
+                // genuinely missing id, where the copy already says so.
+                DetailFailed(:final failure) => CatsErrorView(
+                  failure: failure,
+                  onRetry: () =>
+                      context.read<DetailCatCubit>().load(widget.breedId),
+                ),
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _breed(
+    BuildContext context,
+    CatBreedEntity breed,
+    AppCatsColor wColor,
+  ) {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      appBar: AppBar(
-        automaticallyImplyLeading: true,
-        title: TextWidget(
-          text: widget.catBreedEntity.name,
-          fontSize: 24,
-          colorText: wColor.black,
-        ),
-      ),
       children: [
         Center(
           child: BreedImage(
             height: (MediaQuery.of(context).size.height / 2).h,
-            referenceImageId: widget.catBreedEntity.referenceImageId,
+            referenceImageId: breed.referenceImageId,
           ),
         ),
         Expanded(
@@ -58,34 +129,28 @@ class _DetailCatPageState extends State<DetailCatPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextWidget(
-                    text: widget.catBreedEntity.description,
+                    text: breed.description,
                     fontSize: 20,
                     colorText: wColor.black,
                   ),
                   SizedBox(height: 8.h),
                   TextWidget(
                     textAlign: TextAlign.start,
-                    text: "Country: ${widget.catBreedEntity.origin}",
+                    text: "Country: ${breed.origin}",
                     fontSize: 20,
                     colorText: wColor.black,
                   ),
                   SizedBox(height: 8.h),
                   TextWidget(
-                    text: "LifeSpan: ${widget.catBreedEntity.lifeSpan} years",
+                    text: "LifeSpan: ${breed.lifeSpan} years",
                     fontSize: 20,
                     colorText: wColor.black,
                   ),
                   SizedBox(height: 8.h),
                   ListCharacteristicsCatbreeds(
                     characteristics: [
-                      (
-                        label: "Intelligence:",
-                        value: widget.catBreedEntity.intelligence,
-                      ),
-                      (
-                        label: "Adaptability:",
-                        value: widget.catBreedEntity.adaptability,
-                      ),
+                      (label: "Intelligence:", value: breed.intelligence),
+                      (label: "Adaptability:", value: breed.adaptability),
                     ],
                     fontSize: 20,
                     radius: 12,

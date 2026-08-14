@@ -55,14 +55,15 @@ extension CatsFailurePatterns on CatsFailure {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( NetworkFailure value)?  network,TResult Function( TimeoutFailure value)?  timeout,TResult Function( ServerFailure value)?  server,TResult Function( UnexpectedResponseFailure value)?  unexpectedResponse,TResult Function( UnknownFailure value)?  unknown,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( NetworkFailure value)?  network,TResult Function( TimeoutFailure value)?  timeout,TResult Function( ServerFailure value)?  server,TResult Function( UnexpectedResponseFailure value)?  unexpectedResponse,TResult Function( NotFoundFailure value)?  notFound,TResult Function( UnknownFailure value)?  unknown,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case NetworkFailure() when network != null:
 return network(_that);case TimeoutFailure() when timeout != null:
 return timeout(_that);case ServerFailure() when server != null:
 return server(_that);case UnexpectedResponseFailure() when unexpectedResponse != null:
-return unexpectedResponse(_that);case UnknownFailure() when unknown != null:
+return unexpectedResponse(_that);case NotFoundFailure() when notFound != null:
+return notFound(_that);case UnknownFailure() when unknown != null:
 return unknown(_that);case _:
   return orElse();
 
@@ -81,14 +82,15 @@ return unknown(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( NetworkFailure value)  network,required TResult Function( TimeoutFailure value)  timeout,required TResult Function( ServerFailure value)  server,required TResult Function( UnexpectedResponseFailure value)  unexpectedResponse,required TResult Function( UnknownFailure value)  unknown,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( NetworkFailure value)  network,required TResult Function( TimeoutFailure value)  timeout,required TResult Function( ServerFailure value)  server,required TResult Function( UnexpectedResponseFailure value)  unexpectedResponse,required TResult Function( NotFoundFailure value)  notFound,required TResult Function( UnknownFailure value)  unknown,}){
 final _that = this;
 switch (_that) {
 case NetworkFailure():
 return network(_that);case TimeoutFailure():
 return timeout(_that);case ServerFailure():
 return server(_that);case UnexpectedResponseFailure():
-return unexpectedResponse(_that);case UnknownFailure():
+return unexpectedResponse(_that);case NotFoundFailure():
+return notFound(_that);case UnknownFailure():
 return unknown(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
@@ -103,14 +105,15 @@ return unknown(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( NetworkFailure value)?  network,TResult? Function( TimeoutFailure value)?  timeout,TResult? Function( ServerFailure value)?  server,TResult? Function( UnexpectedResponseFailure value)?  unexpectedResponse,TResult? Function( UnknownFailure value)?  unknown,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( NetworkFailure value)?  network,TResult? Function( TimeoutFailure value)?  timeout,TResult? Function( ServerFailure value)?  server,TResult? Function( UnexpectedResponseFailure value)?  unexpectedResponse,TResult? Function( NotFoundFailure value)?  notFound,TResult? Function( UnknownFailure value)?  unknown,}){
 final _that = this;
 switch (_that) {
 case NetworkFailure() when network != null:
 return network(_that);case TimeoutFailure() when timeout != null:
 return timeout(_that);case ServerFailure() when server != null:
 return server(_that);case UnexpectedResponseFailure() when unexpectedResponse != null:
-return unexpectedResponse(_that);case UnknownFailure() when unknown != null:
+return unexpectedResponse(_that);case NotFoundFailure() when notFound != null:
+return notFound(_that);case UnknownFailure() when unknown != null:
 return unknown(_that);case _:
   return null;
 
@@ -128,13 +131,14 @@ return unknown(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  network,TResult Function()?  timeout,TResult Function( int statusCode)?  server,TResult Function( String detail)?  unexpectedResponse,TResult Function( String detail)?  unknown,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  network,TResult Function()?  timeout,TResult Function( int statusCode)?  server,TResult Function( String detail)?  unexpectedResponse,TResult Function( String id)?  notFound,TResult Function( String detail)?  unknown,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case NetworkFailure() when network != null:
 return network();case TimeoutFailure() when timeout != null:
 return timeout();case ServerFailure() when server != null:
 return server(_that.statusCode);case UnexpectedResponseFailure() when unexpectedResponse != null:
-return unexpectedResponse(_that.detail);case UnknownFailure() when unknown != null:
+return unexpectedResponse(_that.detail);case NotFoundFailure() when notFound != null:
+return notFound(_that.id);case UnknownFailure() when unknown != null:
 return unknown(_that.detail);case _:
   return orElse();
 
@@ -153,13 +157,14 @@ return unknown(_that.detail);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  network,required TResult Function()  timeout,required TResult Function( int statusCode)  server,required TResult Function( String detail)  unexpectedResponse,required TResult Function( String detail)  unknown,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  network,required TResult Function()  timeout,required TResult Function( int statusCode)  server,required TResult Function( String detail)  unexpectedResponse,required TResult Function( String id)  notFound,required TResult Function( String detail)  unknown,}) {final _that = this;
 switch (_that) {
 case NetworkFailure():
 return network();case TimeoutFailure():
 return timeout();case ServerFailure():
 return server(_that.statusCode);case UnexpectedResponseFailure():
-return unexpectedResponse(_that.detail);case UnknownFailure():
+return unexpectedResponse(_that.detail);case NotFoundFailure():
+return notFound(_that.id);case UnknownFailure():
 return unknown(_that.detail);}
 }
 /// A variant of `when` that fallback to returning `null`
@@ -174,13 +179,14 @@ return unknown(_that.detail);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  network,TResult? Function()?  timeout,TResult? Function( int statusCode)?  server,TResult? Function( String detail)?  unexpectedResponse,TResult? Function( String detail)?  unknown,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  network,TResult? Function()?  timeout,TResult? Function( int statusCode)?  server,TResult? Function( String detail)?  unexpectedResponse,TResult? Function( String id)?  notFound,TResult? Function( String detail)?  unknown,}) {final _that = this;
 switch (_that) {
 case NetworkFailure() when network != null:
 return network();case TimeoutFailure() when timeout != null:
 return timeout();case ServerFailure() when server != null:
 return server(_that.statusCode);case UnexpectedResponseFailure() when unexpectedResponse != null:
-return unexpectedResponse(_that.detail);case UnknownFailure() when unknown != null:
+return unexpectedResponse(_that.detail);case NotFoundFailure() when notFound != null:
+return notFound(_that.id);case UnknownFailure() when unknown != null:
 return unknown(_that.detail);case _:
   return null;
 
@@ -378,6 +384,72 @@ class _$UnexpectedResponseFailureCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? detail = null,}) {
   return _then(UnexpectedResponseFailure(
 detail: null == detail ? _self.detail : detail // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class NotFoundFailure implements CatsFailure {
+  const NotFoundFailure({required this.id});
+  
+
+ final  String id;
+
+/// Create a copy of CatsFailure
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NotFoundFailureCopyWith<NotFoundFailure> get copyWith => _$NotFoundFailureCopyWithImpl<NotFoundFailure>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotFoundFailure&&(identical(other.id, id) || other.id == id));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,id);
+
+@override
+String toString() {
+  return 'CatsFailure.notFound(id: $id)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NotFoundFailureCopyWith<$Res> implements $CatsFailureCopyWith<$Res> {
+  factory $NotFoundFailureCopyWith(NotFoundFailure value, $Res Function(NotFoundFailure) _then) = _$NotFoundFailureCopyWithImpl;
+@useResult
+$Res call({
+ String id
+});
+
+
+
+
+}
+/// @nodoc
+class _$NotFoundFailureCopyWithImpl<$Res>
+    implements $NotFoundFailureCopyWith<$Res> {
+  _$NotFoundFailureCopyWithImpl(this._self, this._then);
+
+  final NotFoundFailure _self;
+  final $Res Function(NotFoundFailure) _then;
+
+/// Create a copy of CatsFailure
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? id = null,}) {
+  return _then(NotFoundFailure(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

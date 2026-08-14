@@ -24,23 +24,24 @@ class AppRoute {
             name: homePage,
             builder: (context, state) => const LandingPage(),
             routes: [
+              // Phase 6: `detail/:id`, where the breed used to travel in `extra`.
+              //
+              // `extra` is not reconstructible from a URL, so a deep link to
+              // `/home/detail` (an Android app link, a web URL) or a process
+              // restoration arrived with `state.extra == null` and
+              // `(state.extra!) as CatBreedEntity` blew up with a red screen.
+              // There used to be a `redirect` here sending those to the home
+              // screen — a way of not crashing, not a way of working.
+              //
+              // **That redirect is gone**, and there is nothing in its place: an
+              // id in the path is all the screen needs, so `/home/detail/abys`
+              // now opens the breed on a cold start. `DetailCatPage` resolves it
+              // against the repository, which reads the disk cache first.
               GoRoute(
-                path: detailPage,
+                path: '$detailPage/:id',
                 name: detailPage,
-                // The breed travels in `extra`, which is not reconstructible
-                // from the URL: a deep link to `/home/detail` (Android app link,
-                // web URL) or process restoration arrived with
-                // `state.extra == null` and `(state.extra!) as CatBreedEntity`
-                // blew up with a red screen. This redirect turns it into a
-                // handled navigation.
-                //
-                // Phase 6 removes the problem at the root: route by id
-                // (`detail/:id`), reading from the cache.
-                redirect: (context, state) =>
-                    state.extra is CatBreedEntity ? null : '/$homePage',
-                builder: (context, state) => DetailCatPage(
-                  catBreedEntity: state.extra! as CatBreedEntity,
-                ),
+                builder: (context, state) =>
+                    DetailCatPage(breedId: state.pathParameters['id']!),
               ),
             ],
           ),

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_all_cats_use_case.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_by_id_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_image_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
 import 'package:tecnical_test_pragma/routers/app_route.dart';
 
+import 'in_memory_key_value_store.dart';
 import 'mocks.dart';
 
 extension PumpApp on WidgetTester {
@@ -18,11 +21,51 @@ extension PumpApp on WidgetTester {
   /// `FormSubmitting`, the `CircularProgressIndicator` animates forever, and
   /// `pumpAndSettle` ends in "timed out". It fails just as confusingly for any
   /// bloc with an `async` handler.
-  LandingCatsBloc buildBloc(GetAllCatsUseCase getAllCatsUseCase) {
-    final bloc = LandingCatsBloc(getAllCatsUseCase: getAllCatsUseCase);
+  ///
+  /// Phase 6: a fresh [InMemoryStorage] per call unless one is passed, so no
+  /// widget test touches a disk or shares a store with the test before it.
+  ///
+  /// [fetchOnBuild] dispatches `AllCatsEvent` the way `main.dart` does. It is
+  /// **opt-in and explicit** because Phase 6 moved that dispatch out of
+  /// `LandingPage.initState`, where it refetched the whole list on every return
+  /// from the detail screen. A test that wants breeds now has to say so, which is
+  /// also more honest than depending on a side effect of mounting a widget.
+  LandingCatsBloc buildBloc(
+    GetAllCatsUseCase getAllCatsUseCase, {
+    Storage? storage,
+    bool fetchOnBuild = false,
+  }) {
+    final bloc = LandingCatsBloc(
+      getAllCatsUseCase: getAllCatsUseCase,
+      storage: storage ?? InMemoryStorage(),
+    );
     addTearDown(bloc.close);
+    if (fetchOnBuild) bloc.add(const AllCatsEvent());
     return bloc;
   }
+
+  /// The two use cases widgets look up from the tree, defaulting to network-free
+  /// fakes.
+  ///
+  /// `BreedImage` needs the first (Phase 4) and `DetailCatPage` the second
+  /// (Phase 6). Both come from a `RepositoryProvider` rather than from
+  /// `Injector.resolve()` precisely so widget tests can supply them here instead of
+  /// booting the real DI graph and the real network.
+  Widget _withUseCases(
+    Widget inner, {
+    GetBreedImageUseCase? imageUseCase,
+    GetBreedByIdUseCase? breedByIdUseCase,
+  }) => MultiRepositoryProvider(
+    providers: [
+      RepositoryProvider<GetBreedImageUseCase>.value(
+        value: imageUseCase ?? FakeGetBreedImageUseCase(),
+      ),
+      RepositoryProvider<GetBreedByIdUseCase>.value(
+        value: breedByIdUseCase ?? FakeGetBreedByIdUseCase(),
+      ),
+    ],
+    child: inner,
+  );
 
   /// Mounts [child] inside a bare `MaterialApp`.
   ///
@@ -31,30 +74,24 @@ extension PumpApp on WidgetTester {
   /// two-phase startup (it returns `SizedBox.shrink()` until a
   /// `didChangeDependencies` and a `FutureBuilder` both resolve) would only
   /// complicate every pump.
-  /// The image use case every card needs, defaulting to a network-free fake.
-  ///
-  /// Phase 4 made this necessary: each card paints a `BreedImage`, which builds a
-  /// `BreedImageCubit` from the `GetBreedImageUseCase` it finds in the tree. It
-  /// comes from a `RepositoryProvider` rather than from `Injector.resolve()`
-  /// precisely so that tests can supply it here instead of booting the real DI
-  /// graph and the real network.
   Future<void> pumpAppWith(
     Widget child, {
     LandingCatsBloc? bloc,
     GetBreedImageUseCase? imageUseCase,
+    GetBreedByIdUseCase? breedByIdUseCase,
   }) {
-    Widget withImageUseCase(Widget inner) =>
-        RepositoryProvider<GetBreedImageUseCase>.value(
-          value: imageUseCase ?? FakeGetBreedImageUseCase(),
-          child: inner,
-        );
+    Widget wrap(Widget inner) => _withUseCases(
+      inner,
+      imageUseCase: imageUseCase,
+      breedByIdUseCase: breedByIdUseCase,
+    );
 
     if (bloc == null) {
-      return pumpWidget(withImageUseCase(MaterialApp(home: child)));
+      return pumpWidget(wrap(MaterialApp(home: child)));
     }
 
     return pumpWidget(
-      withImageUseCase(
+      wrap(
         BlocProvider<LandingCatsBloc>.value(
           value: bloc,
           child: MaterialApp(home: child),
@@ -68,17 +105,19 @@ extension PumpApp on WidgetTester {
     required LandingCatsBloc bloc,
     String initialLocation = '/',
     GetBreedImageUseCase? imageUseCase,
+    GetBreedByIdUseCase? breedByIdUseCase,
   }) {
     final router = AppRoute.router(initialLocation: initialLocation);
     addTearDown(router.dispose);
 
     return pumpWidget(
-      RepositoryProvider<GetBreedImageUseCase>.value(
-        value: imageUseCase ?? FakeGetBreedImageUseCase(),
-        child: BlocProvider<LandingCatsBloc>.value(
+      _withUseCases(
+        BlocProvider<LandingCatsBloc>.value(
           value: bloc,
           child: MaterialApp.router(routerConfig: router),
         ),
+        imageUseCase: imageUseCase,
+        breedByIdUseCase: breedByIdUseCase,
       ),
     );
   }
