@@ -1,0 +1,26 @@
+# Phase 7. Configuration for `gen-l10n`, which runs as part of `flutter pub get`
+# because `flutter: generate: true` is set in pubspec.yaml.
+#
+# `synthetic-package` is deliberately absent: it is deprecated and can no longer
+# be enabled (flutter_tools/lib/src/localizations/generate_localizations.dart),
+# so the generated files land next to the ARBs and are committed like every other
+# generated file here. The public l10n documentation page still describes the
+# synthetic package; it is stale.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+
+# Non-nullable `AppLocalizations.of(context)`. The alternative returns `null` when
+# the delegate is missing, which turns a forgotten delegate in a test harness into
+# a null-check crash far from its cause instead of an immediate one.
+nullable-getter: false
+
+# The two halves of this phase's structural countermeasure, and the reason they
+# are here rather than left at their defaults:
+#
+# A key present in app_en.arb and missing from app_es.arb falls back to English at
+# runtime with *nothing failing* — gen-l10n only warns, `flutter test` never
+# regenerates, and the suite pins Locale('en'). These make the build loud about it;
+# `test/l10n/arb_parity_test.dart` is what makes it an actual failure.
+required-resource-attributes: true
+untranslated-messages-file: l10n_untranslated.json

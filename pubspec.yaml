@@ -40,14 +40,27 @@ dependencies:
   # being visible from `data/`.
   hydrated_bloc: ^11.0.0
   # Only to hand `HydratedStorage.build` a directory, in `main.dart`. It was
-  # already here as a transitive dependency of google_fonts; Phase 7 removes that
-  # one, and this promotion to a direct dependency is what keeps the storage
-  # working when it does.
+  # already here as a transitive dependency of google_fonts; Phase 6 promoted it
+  # to a direct dependency precisely so the storage would keep working when
+  # Phase 7 dropped that package — which is what happened. Measured at the time:
+  # google_fonts pulled `crypto`, `http` and `path_provider`, and all three
+  # survive its removal (`http` is direct, `crypto` comes via hydrated_bloc), so
+  # removing it cost exactly one package.
   path_provider: ^2.1.6
   get_it: ^9.2.1
   injectable: ^2.7.1
-  google_fonts: ^8.2.1
   go_router: ^17.4.0
+  # Phase 7. `google_fonts` fetched Acme at runtime on every screen — every one
+  # of them renders through what used to be `TextWidget`. The font is now an
+  # asset (`assets/fonts/`), which is also what lets `flutter_test` load a real
+  # font: `flutter_test` has no font-loading code of its own, so without a
+  # bundled file every glyph is drawn as a full em square.
+  flutter_localizations:
+    sdk: flutter
+  # Required by the code `gen-l10n` generates — it imports `package:intl/intl.dart`.
+  # Left unpinned on purpose: `flutter_localizations` pins `intl` exactly, and any
+  # constraint here that disagrees with the SDK's fails resolution.
+  intl: any
   # `equatable` was here from Phase 2 to Phase 4, described as temporary: it gave
   # value equality to states, events and entities so bloc_test's `expect:` and
   # mocktail's `verify` could work at all. Phase 4 removed it — freezed generates
@@ -115,10 +128,27 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # Phase 7. Turns on `gen-l10n`, which runs as part of `flutter pub get`.
+  #
+  # Worth knowing, because it decides whether the output is committed:
+  # `flutter test` does **not** run it — only `pub get` does, and only with this
+  # flag. So the generated `lib/l10n/app_localizations*.dart` is committed, like
+  # every other generated file in this repo.
+  generate: true
+
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
     - assets/images/
+    - assets/fonts/
+
+  # Phase 7. Bundled instead of fetched at runtime by `google_fonts`, which is
+  # gone. `OFL.txt` ships beside the file because the SIL Open Font License
+  # requires the licence to travel with the font.
+  fonts:
+    - family: Acme
+      fonts:
+        - asset: assets/fonts/Acme-Regular.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
