@@ -4,8 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
-import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/search_cat_breeds_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_image.dart';
@@ -20,18 +18,16 @@ class SearchDelegateAllCatbreeds extends SearchDelegate<List<CatBreedEntity>?> {
   final List<CatBreedEntity> listCatBreedEntity;
   final SearchCatBreedsUseCase search;
 
-  final wColor = AppCatsColor();
-
   /// Kept because `buildLeading` returns it when the search is closed.
   List<CatBreedEntity> filterCatBreedEntity = const [];
 
   @override
   List<Widget>? buildActions(BuildContext context) {
     return [
-      IconButton(
-        onPressed: () => query = "",
-        icon: Icon(Icons.clear, color: wColor.black),
-      ),
+      // Phase 7: the icons had a hardcoded near-black colour. `IconButton` takes
+      // `colorScheme.onSurfaceVariant` from the theme, which follows the
+      // brightness — and `SearchDelegate` builds its own themed scaffold.
+      IconButton(onPressed: () => query = "", icon: const Icon(Icons.clear)),
     ];
   }
 
@@ -39,7 +35,7 @@ class SearchDelegateAllCatbreeds extends SearchDelegate<List<CatBreedEntity>?> {
   Widget? buildLeading(BuildContext context) {
     return IconButton(
       onPressed: () => close(context, filterCatBreedEntity),
-      icon: Icon(Icons.arrow_back, color: wColor.black),
+      icon: const Icon(Icons.arrow_back),
     );
   }
 
@@ -118,14 +114,10 @@ class SearchDelegateAllCatbreeds extends SearchDelegate<List<CatBreedEntity>?> {
           itemCount: history.length,
           padding: EdgeInsets.symmetric(horizontal: 12.w),
           itemBuilder: (context, index) {
+            // No explicit style: `TextButton` renders its label as `labelLarge`.
             return TextButton(
               onPressed: () => query = history[index],
-              child: TextWidget(
-                textAlign: TextAlign.start,
-                text: history[index],
-                fontSize: 18,
-                colorText: wColor.black,
-              ),
+              child: Text(history[index], textAlign: TextAlign.start),
             );
           },
         );

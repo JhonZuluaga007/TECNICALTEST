@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/breed_characteristic_widget.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/widgets/list_characteristics_catbreeds_widget.dart';
@@ -55,15 +56,23 @@ void main() {
       final widget = tester.widget<BreedCharacteristicWidget>(
         find.byType(BreedCharacteristicWidget),
       );
-      expect(widget.fontSize, 18);
+      // Phase 7: the default is a role off the theme, not a number.
+      //
+      // Compared against the theme **of the widget's own context**, not against
+      // `AppTheme.light().textTheme.bodyLarge`: `MaterialApp` merges the
+      // locale's text geometry into the theme it hands down, so the raw
+      // `ThemeData` and what `Theme.of` returns are not the same object.
+      final context = tester.element(find.byType(BreedCharacteristicWidget));
+      expect(widget.labelStyle, Theme.of(context).textTheme.bodyLarge);
       expect(widget.radius, 10);
     });
 
-    testWidgets('forwards fontSize and radius when provided', (tester) async {
+    testWidgets('forwards labelStyle and radius when provided', (tester) async {
+      const style = TextStyle(fontSize: 20);
       await tester.pumpAppWith(
         const ListCharacteristicsCatbreeds(
           characteristics: [(label: 'Intelligence:', value: 5)],
-          fontSize: 20,
+          labelStyle: style,
           radius: 12,
         ),
       );
@@ -71,7 +80,7 @@ void main() {
       final widget = tester.widget<BreedCharacteristicWidget>(
         find.byType(BreedCharacteristicWidget),
       );
-      expect(widget.fontSize, 20);
+      expect(widget.labelStyle, style);
       expect(widget.radius, 12);
     });
   });

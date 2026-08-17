@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/my_app_scaffold.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
-import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/bloc/detail_cat_cubit.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/widgets/list_characteristics_catbreeds_widget.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
@@ -13,6 +11,7 @@ import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_
 // promotes them to `core/common_widgets/` if a third consumer shows up.
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_image.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/landing_status_views.dart';
+import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 
 /// The breed detail screen.
 ///
@@ -62,7 +61,8 @@ class _DetailCatViewState extends State<_DetailCatView> {
 
   @override
   Widget build(BuildContext context) {
-    final wColor = AppCatsColor();
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return BlocBuilder<DetailCatCubit, DetailCatState>(
       builder: (context, state) {
@@ -72,23 +72,22 @@ class _DetailCatViewState extends State<_DetailCatView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           appBar: AppBar(
             automaticallyImplyLeading: true,
-            title: TextWidget(
+            title: Text(
               // The title has to survive not knowing the breed yet. It used to be
               // `widget.catBreedEntity.name`, which was always available because
               // the whole entity came in through the route.
-              text: switch (state) {
+              switch (state) {
                 DetailReady(:final breed) => breed.name,
-                _ => 'Catbreeds',
+                _ => l10n.appTitle,
               },
-              fontSize: 24,
-              colorText: wColor.black,
+              style: theme.textTheme.headlineSmall,
             ),
           ),
           children: [
             Expanded(
               child: switch (state) {
                 DetailLoading() => const CatsLoadingView(),
-                DetailReady(:final breed) => _breed(context, breed, wColor),
+                DetailReady(:final breed) => _breed(context, breed),
                 // Reuses the landing screen's error view, callback and all. The
                 // retry re-runs the lookup rather than navigating away, which is
                 // the useful action for a network failure — and harmless for a
@@ -106,11 +105,10 @@ class _DetailCatViewState extends State<_DetailCatView> {
     );
   }
 
-  Widget _breed(
-    BuildContext context,
-    CatBreedEntity breed,
-    AppCatsColor wColor,
-  ) {
+  Widget _breed(BuildContext context, CatBreedEntity breed) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -128,31 +126,34 @@ class _DetailCatViewState extends State<_DetailCatView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextWidget(
-                    text: breed.description,
-                    fontSize: 20,
-                    colorText: wColor.black,
-                  ),
+                  // Phase 7 maps these three to `bodyLarge` rather than to the
+                  // `titleLarge` their old 20 px would suggest: they are body
+                  // copy, and a role carries meaning, not just a size.
+                  Text(breed.description, style: theme.textTheme.bodyLarge),
                   SizedBox(height: 8.h),
-                  TextWidget(
+                  Text(
+                    l10n.countryLabel(breed.origin),
                     textAlign: TextAlign.start,
-                    text: "Country: ${breed.origin}",
-                    fontSize: 20,
-                    colorText: wColor.black,
+                    style: theme.textTheme.bodyLarge,
                   ),
                   SizedBox(height: 8.h),
-                  TextWidget(
-                    text: "LifeSpan: ${breed.lifeSpan} years",
-                    fontSize: 20,
-                    colorText: wColor.black,
+                  Text(
+                    l10n.lifeSpanLabel(breed.lifeSpan),
+                    style: theme.textTheme.bodyLarge,
                   ),
                   SizedBox(height: 8.h),
                   ListCharacteristicsCatbreeds(
                     characteristics: [
-                      (label: "Intelligence:", value: breed.intelligence),
-                      (label: "Adaptability:", value: breed.adaptability),
+                      (
+                        label: l10n.intelligenceLabel,
+                        value: breed.intelligence,
+                      ),
+                      (
+                        label: l10n.adaptabilityLabel,
+                        value: breed.adaptability,
+                      ),
                     ],
-                    fontSize: 20,
+                    labelStyle: theme.textTheme.titleLarge,
                     radius: 12,
                   ),
                   SizedBox(height: 8.h),

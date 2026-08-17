@@ -1,0 +1,122 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Catbreeds",
+  "@appTitle": {
+    "description": "The application name, shown in the splash, the landing app bar and the detail app bar. A proper noun: not translated."
+  },
+
+  "searchHint": "Search by the name",
+  "@searchHint": {
+    "description": "Placeholder inside the search field on the landing screen."
+  },
+
+  "moreAction": "More...",
+  "@moreAction": {
+    "description": "Action on a breed card that opens the detail screen."
+  },
+
+  "countryLabel": "Country: {origin}",
+  "@countryLabel": {
+    "description": "Country of origin of a breed, on the detail screen.",
+    "placeholders": {
+      "origin": {
+        "type": "String",
+        "example": "Egypt"
+      }
+    }
+  },
+
+  "lifeSpanLabel": "LifeSpan: {lifeSpan} years",
+  "@lifeSpanLabel": {
+    "description": "Life expectancy range of a breed, on the detail screen. The value is a range as sent by the API, not a number.",
+    "placeholders": {
+      "lifeSpan": {
+        "type": "String",
+        "example": "14 - 15"
+      }
+    }
+  },
+
+  "intelligenceLabel": "Intelligence:",
+  "@intelligenceLabel": {
+    "description": "Label of the intelligence rating meter, on the detail screen."
+  },
+
+  "adaptabilityLabel": "Adaptability:",
+  "@adaptabilityLabel": {
+    "description": "Label of the adaptability rating meter, on the detail screen."
+  },
+
+  "toggleTheme": "Change theme",
+  "@toggleTheme": {
+    "description": "Tooltip of the app-bar button that cycles system -> light -> dark. A tooltip rather than visible copy, so it is also what a screen reader announces for the button."
+  },
+
+  "emptyBreeds": "No cat breeds to show.",
+  "@emptyBreeds": {
+    "description": "Shown when the request succeeded but returned zero breeds."
+  },
+
+  "retry": "Retry",
+  "@retry": {
+    "description": "Button on the full-screen error view."
+  },
+
+  "refresh": "Refresh",
+  "@refresh": {
+    "description": "Button on the stale-data banner, next to the reason the list is old."
+  },
+
+  "staleBanner": "Showing saved breeds. {reason}",
+  "@staleBanner": {
+    "description": "Banner above a list served from an expired cache. Deliberately says the list is old before saying why: what the user needs to know first is that what they are looking at is still usable.",
+    "placeholders": {
+      "reason": {
+        "type": "String",
+        "example": "No internet connection. Check your network and try again."
+      }
+    }
+  },
+
+  "failureNetwork": "No internet connection. Check your network and try again.",
+  "@failureNetwork": {
+    "description": "The request never reached the server."
+  },
+
+  "failureTimeout": "The request took too long. Try again.",
+  "@failureTimeout": {
+    "description": "The request was sent but did not answer in time."
+  },
+
+  "failureAuth": "Could not authenticate with the cat service.",
+  "@failureAuth": {
+    "description": "The server answered 401 or 403. Split from the general server failure so an auth problem does not read as 'our servers are down'."
+  },
+
+  "failureServer": "The cat service failed ({statusCode}). Try again later.",
+  "@failureServer": {
+    "description": "The server answered with a status other than 200, 401 or 403.",
+    "placeholders": {
+      "statusCode": {
+        "type": "int",
+        "example": "503"
+      }
+    }
+  },
+
+  "failureUnexpected": "The cat service returned something unexpected.",
+  "@failureUnexpected": {
+    "description": "The server answered 200 with a body we cannot read."
+  },
+
+  "failureNotFound": "We could not find that cat breed.",
+  "@failureNotFound": {
+    "description": "The breed id does not exist. The id is deliberately absent from the copy: it is an internal key the user never typed, and retrying is pointless."
+  },
+
+  "failureUnknown": "Something went wrong. Try again.",
+  "@failureUnknown": {
+    "description": "Anything not anticipated. Its existence is what lets the repository be a total function."
+  }
+}

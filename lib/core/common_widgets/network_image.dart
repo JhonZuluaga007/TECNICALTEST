@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
 
 import '../../cats_icons.dart';
 
@@ -18,8 +17,6 @@ class NetworkImageWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final wColor = AppCatsColor();
-
     return Image.network(
       imageUrl,
       width: width,
@@ -37,8 +34,10 @@ class NetworkImageWidget extends StatelessWidget {
           return child;
         } else {
           return Center(
+            // Phase 7: the colour was a hardcoded near-black. Left to the theme,
+            // a progress indicator takes `colorScheme.primary`, which is the
+            // role for it and which follows the active brightness.
             child: CircularProgressIndicator(
-              color: wColor.black,
               value: loadingProgress.expectedTotalBytes != null
                   ? loadingProgress.cumulativeBytesLoaded /
                         loadingProgress.expectedTotalBytes!

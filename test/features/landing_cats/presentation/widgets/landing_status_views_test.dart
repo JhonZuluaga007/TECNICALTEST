@@ -2,10 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/landing_status_views.dart';
+import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 
 import '../../../../helpers/pump_app.dart';
 
 void main() {
+  // Phase 7: `messageFor` now takes an `AppLocalizations`. Loading the delegate
+  // directly is what keeps these eight assertions unit tests — the alternative,
+  // reading it off a `BuildContext`, would mean pumping a widget to check a
+  // string.
+  late AppLocalizations l10n;
+
+  setUpAll(() async {
+    l10n = await AppLocalizations.delegate.load(const Locale('en'));
+  });
+
   group('messageFor', () {
     test('gives every failure variant its own message', () {
       // No two causes share copy: that is the entire point of having replaced
@@ -19,12 +30,12 @@ void main() {
       // `cats_failure_test.dart`'s own switch breaks with it. This test only
       // checks that the messages are distinct and non-empty.
       final messages = <String>{
-        messageFor(const NetworkFailure()),
-        messageFor(const TimeoutFailure()),
-        messageFor(const ServerFailure(statusCode: 500)),
-        messageFor(const UnexpectedResponseFailure(detail: 'x')),
-        messageFor(const NotFoundFailure(id: 'abys')),
-        messageFor(const UnknownFailure(detail: 'x')),
+        messageFor(l10n, const NetworkFailure()),
+        messageFor(l10n, const TimeoutFailure()),
+        messageFor(l10n, const ServerFailure(statusCode: 500)),
+        messageFor(l10n, const UnexpectedResponseFailure(detail: 'x')),
+        messageFor(l10n, const NotFoundFailure(id: 'abys')),
+        messageFor(l10n, const UnknownFailure(detail: 'x')),
       };
 
       expect(messages, hasLength(6));
@@ -38,13 +49,19 @@ void main() {
       // it is just not the common path.
       const auth = 'Could not authenticate with the cat service.';
 
-      expect(messageFor(const ServerFailure(statusCode: 401)), auth);
-      expect(messageFor(const ServerFailure(statusCode: 403)), auth);
-      expect(messageFor(const ServerFailure(statusCode: 500)), isNot(auth));
+      expect(messageFor(l10n, const ServerFailure(statusCode: 401)), auth);
+      expect(messageFor(l10n, const ServerFailure(statusCode: 403)), auth);
+      expect(
+        messageFor(l10n, const ServerFailure(statusCode: 500)),
+        isNot(auth),
+      );
     });
 
     test('a server failure surfaces its status code', () {
-      expect(messageFor(const ServerFailure(statusCode: 503)), contains('503'));
+      expect(
+        messageFor(l10n, const ServerFailure(statusCode: 503)),
+        contains('503'),
+      );
     });
   });
 
@@ -79,7 +96,10 @@ void main() {
         ),
       );
 
-      expect(find.text(messageFor(const NetworkFailure())), findsOneWidget);
+      expect(
+        find.text(messageFor(l10n, const NetworkFailure())),
+        findsOneWidget,
+      );
       expect(find.text('Retry'), findsOneWidget);
     });
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
 
 class MyAppScaffold extends StatelessWidget {
   const MyAppScaffold({
@@ -26,7 +25,11 @@ class MyAppScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        backgroundColor: backgroundColor ?? AppCatsColor().mapColors["BG"],
+        // Phase 7: the fallback used to be a hardcoded light grey, which is
+        // exactly the value a `Scaffold` already takes from
+        // `ThemeData.scaffoldBackgroundColor` — and the hardcoded one would have
+        // stayed light in dark mode. Passing null defers to the theme.
+        backgroundColor: backgroundColor,
         appBar: appBar,
         body: Padding(
           padding: paddingColumn ?? EdgeInsets.zero,

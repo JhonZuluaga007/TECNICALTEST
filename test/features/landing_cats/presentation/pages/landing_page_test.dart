@@ -307,6 +307,58 @@ void main() {
     });
   });
 
+  group('LandingPage in Spanish', () {
+    // The test that proves the l10n is a lookup rather than ceremony.
+    //
+    // Every other widget test in the suite pins `Locale('en')` so it can assert
+    // on copy, and the ARB values were copied character-for-character from the
+    // literals they replaced — which means a widget that never stopped
+    // hardcoding its English string passes all of them. Pumping the same page in
+    // `es` is the only assertion that can tell the two apart.
+    testWidgets('the empty view reads from the ARB, not from a literal', (
+      tester,
+    ) async {
+      when(
+        () => useCase.getAllCatsCall(),
+      ).thenAnswer((_) async => const Ok(FreshBreeds(breeds: [])));
+
+      await tester.pumpAppWith(
+        const LandingPage(),
+        bloc: tester.buildBloc(useCase, fetchOnBuild: true),
+        locale: const Locale('es'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('No hay razas de gato para mostrar.'), findsOneWidget);
+      // Both halves matter: the second is what fails if the widget renders the
+      // English literal, the first if it renders nothing at all.
+      expect(find.text('No cat breeds to show.'), findsNothing);
+    });
+
+    testWidgets('the error view localizes the failure copy too', (
+      tester,
+    ) async {
+      // `messageFor`'s right-hand sides were the last hardcoded strings in the
+      // presentation layer (`TODO(phase 7)` in `landing_status_views.dart`).
+      // Interpolation included: the status code has no `format:` in the ARB, so
+      // 503 must not come out as "1,503" or as a localized decimal.
+      stubFailure(const ServerFailure(statusCode: 503));
+
+      await tester.pumpAppWith(
+        const LandingPage(),
+        bloc: tester.buildBloc(useCase, fetchOnBuild: true),
+        locale: const Locale('es'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('El servicio de gatos falló (503). Inténtalo más tarde.'),
+        findsOneWidget,
+      );
+      expect(find.text('Reintentar'), findsOneWidget);
+    });
+  });
+
   group('LandingPage when the breeds are stale', () {
     testWidgets('shows the list AND a banner, not an error screen', (
       tester,

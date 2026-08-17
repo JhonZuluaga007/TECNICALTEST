@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tecnical_test_pragma/cats_icons.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/network_image.dart';
-import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
 
 import '../../domain/use_cases/get_breed_image_use_case.dart';
 import '../bloc/breed_image/breed_image_cubit.dart';
@@ -49,10 +48,10 @@ class BreedImage extends StatelessWidget {
     );
   }
 
+  // Phase 7: the indicator's colour was a hardcoded near-black. Unset, it takes
+  // `colorScheme.primary` and follows the active brightness.
   Widget _placeholder(BuildContext context) => SizedBox(
     height: height ?? 250,
-    child: Center(
-      child: CircularProgressIndicator(color: AppCatsColor().black),
-    ),
+    child: const Center(child: CircularProgressIndicator()),
   );
 }

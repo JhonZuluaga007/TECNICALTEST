@@ -19,12 +19,14 @@ class ListCharacteristicsCatbreeds extends StatelessWidget {
   const ListCharacteristicsCatbreeds({
     super.key,
     required this.characteristics,
-    this.fontSize,
+    this.labelStyle,
     this.radius,
   });
 
   final List<BreedCharacteristic> characteristics;
-  final double? fontSize;
+
+  /// Phase 7: was `double? fontSize`. Defaults to `bodyLarge`.
+  final TextStyle? labelStyle;
   final double? radius;
 
   @override
@@ -38,7 +40,7 @@ class ListCharacteristicsCatbreeds extends StatelessWidget {
                 width: 500.w,
                 height: 30,
                 radius: radius ?? 10,
-                fontSize: fontSize ?? 18,
+                labelStyle: labelStyle ?? Theme.of(context).textTheme.bodyLarge,
                 nameCharacteristic: characteristic.label,
                 value: characteristic.value,
               ),
