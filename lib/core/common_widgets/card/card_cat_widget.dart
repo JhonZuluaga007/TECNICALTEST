@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/breed_characteristic_widget.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
-import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
+import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 
 class CardCatWidget extends StatelessWidget {
   const CardCatWidget({
@@ -29,14 +28,17 @@ class CardCatWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final wColor = AppCatsColor();
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
     return Card(
       elevation: 2,
-      surfaceTintColor: wColor.mapColors["W"],
-      color: wColor.mapColors["W"],
+      // Phase 7: `color` and `surfaceTintColor` were both pinned to white. A
+      // `Card` already takes `colorScheme.surfaceContainerLow` and tints by
+      // elevation, which is what makes it legible in dark mode too.
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: wColor.black, width: 1),
+        side: BorderSide(color: theme.colorScheme.outline, width: 1),
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 15.h),
@@ -45,21 +47,15 @@ class CardCatWidget extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                TextWidget(
-                  text: nameCat,
-                  fontSize: 18,
-                  colorText: wColor.black,
-                ),
+                Text(nameCat, style: theme.textTheme.bodyLarge),
                 TextButton(
-                  style: ButtonStyle(
-                    overlayColor: WidgetStatePropertyAll(wColor.black[30]),
-                  ),
+                  // The `overlayColor` override is gone: it forced a light-grey
+                  // ripple that would have stayed light grey on a dark surface,
+                  // and the default is derived from the button's own foreground.
                   onPressed: onPressed,
-                  child: TextWidget(
-                    text: "More...",
-                    fontSize: 18,
-                    colorText: wColor.black,
-                  ),
+                  // No explicit style: `TextButton` already renders its label as
+                  // `labelLarge`.
+                  child: Text(l10n.moreAction),
                 ),
               ],
             ),
@@ -70,18 +66,14 @@ class CardCatWidget extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: TextWidget(
-                    text: countryOrigin,
-                    fontSize: 18,
-                    colorText: wColor.black,
-                  ),
+                  child: Text(countryOrigin, style: theme.textTheme.bodyLarge),
                 ),
                 BreedCharacteristicWidget(
                   width: 190.w,
-                  nameCharacteristic: "Intelligence:",
+                  nameCharacteristic: l10n.intelligenceLabel,
                   value: intelligent,
                   radius: 10,
-                  fontSize: 20,
+                  labelStyle: theme.textTheme.titleLarge,
                 ),
               ],
             ),

@@ -5,8 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tecnical_test_pragma/cats_icons.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/my_app_scaffold.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
-import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
+import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 import 'package:tecnical_test_pragma/routers/routers.dart';
 
 class SplashCatBreeds extends StatefulWidget {
@@ -43,23 +42,25 @@ class _SplashCatBreedsState extends State<SplashCatBreeds> {
 
   @override
   Widget build(BuildContext context) {
-    final wColor = AppCatsColor();
+    final theme = Theme.of(context);
     return MyAppScaffold(
-      backgroundColor: wColor.mapColors["W"],
+      // Phase 7: both of these were pinned to white, which on a dark device gave
+      // a white splash followed by a dark app.
+      backgroundColor: theme.colorScheme.surface,
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
       paddingColumn: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
       bottomSheet: Container(
-        color: wColor.mapColors["W"],
+        color: theme.colorScheme.surface,
         child: Image.asset(CatsIcons.imageCatSplash, width: 200.w, height: 300),
       ),
       children: [
         Center(
-          child: TextWidget(
-            text: "Catbreeds",
-            fontSize: 42,
-            fontWeight: FontWeight.bold,
-            colorText: wColor.black,
+          child: Text(
+            AppLocalizations.of(context).appTitle,
+            style: theme.textTheme.displaySmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         SizedBox(height: 170.h),

@@ -1,8 +1,9 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
 import 'package:tecnical_test_pragma/core/config/helpers/endpoints.dart';
+import 'package:tecnical_test_pragma/core/design_system/cats_tokens.dart';
 import 'package:tecnical_test_pragma/core/injector/injector.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/pages/detail_cat_page.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/pages/landing_page.dart';
@@ -152,6 +153,53 @@ void main() {
       requestedUrls.where((url) => url == Endpoints.urlAllCats),
       hasLength(1),
       reason: 'one breeds request for the whole journey',
+    );
+  });
+
+  testWidgets('a dark device with no stored preference boots dark', (
+    tester,
+  ) async {
+    // Phase 7's new behaviour, end to end. Before it, `MaterialApp.router` was
+    // passed no theme at all, so a device in dark mode got the light app — and
+    // there was nothing to assert on, because `Theme.of` returned the Material
+    // fallback either way.
+    //
+    // The three pieces have to line up for this to pass: `darkTheme` is provided,
+    // `themeMode` comes from the cubit, and the cubit hydrates to
+    // `ThemeMode.system` from an empty box. Any one of them missing turns this
+    // light.
+    ignoreOverflowErrors();
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+
+    await bootApp(tester, storage: InMemoryStorage());
+
+    // Read off a real widget's context rather than off the `MaterialApp`
+    // arguments: what matters is the theme the screen is painted with, and
+    // `themeMode` resolution happens between the two.
+    final theme = Theme.of(tester.element(find.byType(SplashCatBreeds)));
+
+    expect(theme.brightness, Brightness.dark);
+    expect(theme.colorScheme.brightness, Brightness.dark);
+    // The extension has to survive the resolution too — `Theme.of(context).cats`
+    // uses `!`, so a `darkTheme` built without it crashes the first rating meter.
+    expect(theme.extension<CatsTokens>(), isNotNull);
+  });
+
+  testWidgets('the same device boots light when the platform is light', (
+    tester,
+  ) async {
+    // The control. Without it the test above passes against an app hardcoded to
+    // `AppTheme.dark()`, which is the same bug in the other direction.
+    ignoreOverflowErrors();
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+
+    await bootApp(tester, storage: InMemoryStorage());
+
+    expect(
+      Theme.of(tester.element(find.byType(SplashCatBreeds))).brightness,
+      Brightness.light,
     );
   });
 

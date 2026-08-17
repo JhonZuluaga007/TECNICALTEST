@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
-import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
+import 'package:tecnical_test_pragma/core/design_system/cats_tokens.dart';
 
+/// A labelled five-dot rating meter.
+///
+/// Phase 7 replaced the `double? fontSize` parameter with [labelStyle]. The old
+/// one existed so the two call sites could render the label at different sizes
+/// (20 in a card, 18 in the detail list), which meant every caller had to know a
+/// number. They now pass a role off the `TextTheme` and the numbers live in one
+/// place.
 class BreedCharacteristicWidget extends StatelessWidget {
   const BreedCharacteristicWidget({
     super.key,
@@ -11,27 +17,34 @@ class BreedCharacteristicWidget extends StatelessWidget {
     this.width,
     this.height,
     this.radius,
-    this.fontSize,
+    this.labelStyle,
   });
+
   final String nameCharacteristic;
   final int value;
   final double? width;
   final double? height;
   final double? radius;
-  final double? fontSize;
+
+  /// Defaults to `titleLarge`.
+  final TextStyle? labelStyle;
 
   @override
   Widget build(BuildContext context) {
-    final wColor = AppCatsColor();
+    final theme = Theme.of(context);
+    // The one pair of colours in this app with no Material 3 role: a filled and
+    // an empty dot have to stay legible against each other, not against the
+    // surface. See `CatsTokens`.
+    final tokens = theme.cats;
+
     return SizedBox(
       width: width ?? 200.w,
       height: height ?? 60.h,
       child: Row(
         children: [
-          TextWidget(
-            text: nameCharacteristic,
-            fontSize: fontSize ?? 22,
-            colorText: wColor.black,
+          Text(
+            nameCharacteristic,
+            style: labelStyle ?? theme.textTheme.titleLarge,
           ),
           SizedBox(width: 12.w),
           Expanded(
@@ -42,8 +55,8 @@ class BreedCharacteristicWidget extends StatelessWidget {
                 return CircleAvatar(
                   radius: radius ?? 20,
                   backgroundColor: value > index
-                      ? wColor.mapColors["LigthGreen"]
-                      : wColor.mapColors["LigthGrey"],
+                      ? tokens.ratingFilled
+                      : tokens.ratingEmpty,
                 );
               },
               separatorBuilder: (BuildContext context, int index) {

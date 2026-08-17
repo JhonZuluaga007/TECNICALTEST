@@ -99,3 +99,15 @@ app.*.map.json
 # Windows / Linux
 **/windows/flutter/generated_plugin*
 **/linux/flutter/generated_plugin*
+
+# Claude Code
+# The shared configuration — CLAUDE.md, .claude/agents, .claude/skills,
+# .claude/hooks, .claude/settings.json and .mcp.json — IS committed on purpose:
+# it is what makes an agent session reproducible for the next person. Only the
+# per-developer overrides and the session scratch stay out.
+.claude/settings.local.json
+.claude/.session/
+
+# Phase 7. gen-l10n writes it on every `pub get`; it is a build report,
+# not source. Empty when the ARBs are in parity.
+l10n_untranslated.json

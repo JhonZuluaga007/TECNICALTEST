@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/breed_characteristic_widget.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
 import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
 import 'package:tecnical_test_pragma/core/utils/cats_result.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/pages/detail_cat_page.dart';
@@ -85,13 +84,11 @@ void main() {
 
     testWidgets('the country textAlign reaches the Text', (tester) async {
       // Before Phase 2 `TextWidget` did not forward `textAlign`, so this
-      // `TextAlign.start` was a no-op.
+      // `TextAlign.start` was a no-op. Phase 7 deleted `TextWidget` — the
+      // wrapper half of this test went with it, and what is left is the
+      // assertion that always mattered: the `Text` actually carries the
+      // alignment.
       await pumpDetail(tester);
-
-      final countryWidget = tester.widget<TextWidget>(
-        find.widgetWithText(TextWidget, 'Country: Egypt'),
-      );
-      expect(countryWidget.textAlign, TextAlign.start);
 
       final countryText = tester.widget<Text>(find.text('Country: Egypt'));
       expect(countryText.textAlign, TextAlign.start);

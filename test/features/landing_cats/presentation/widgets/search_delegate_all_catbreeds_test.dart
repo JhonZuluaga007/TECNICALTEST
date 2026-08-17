@@ -4,10 +4,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
+import 'package:tecnical_test_pragma/core/design_system/app_theme.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_image_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/search_delegate_all_catbreeds.dart';
+import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 
 import '../../../../helpers/builders.dart';
 import '../../../../helpers/ignore_overflow_errors.dart';
@@ -56,7 +58,17 @@ void main() {
         value: FakeGetBreedImageUseCase(),
         child: BlocProvider<LandingCatsBloc>.value(
           value: bloc,
+          // Phase 7: the theme and the delegates have to be repeated for the same
+          // reason the provider is. A bare `MaterialApp` here crashed every test
+          // that renders a card — `CardCatWidget` reads `AppLocalizations` and
+          // `BreedCharacteristicWidget` reads `Theme.of(context).cats`, and both
+          // are deliberately non-nullable so a harness missing the app theme
+          // fails loudly in the test that forgot it.
           child: MaterialApp(
+            theme: AppTheme.light(),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('en'),
             home: Builder(
               builder: (context) => Scaffold(
                 body: IconButton(

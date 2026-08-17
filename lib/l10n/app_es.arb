@@ -1,0 +1,23 @@
+{
+  "@@locale": "es",
+
+  "appTitle": "Catbreeds",
+  "searchHint": "Busca por el nombre",
+  "moreAction": "Ver más...",
+  "countryLabel": "País: {origin}",
+  "lifeSpanLabel": "Esperanza de vida: {lifeSpan} años",
+  "intelligenceLabel": "Inteligencia:",
+  "adaptabilityLabel": "Adaptabilidad:",
+  "toggleTheme": "Cambiar tema",
+  "emptyBreeds": "No hay razas de gato para mostrar.",
+  "retry": "Reintentar",
+  "refresh": "Actualizar",
+  "staleBanner": "Mostrando razas guardadas. {reason}",
+  "failureNetwork": "Sin conexión a internet. Revisa tu red e inténtalo de nuevo.",
+  "failureTimeout": "La solicitud tardó demasiado. Inténtalo de nuevo.",
+  "failureAuth": "No se pudo autenticar con el servicio de gatos.",
+  "failureServer": "El servicio de gatos falló ({statusCode}). Inténtalo más tarde.",
+  "failureUnexpected": "El servicio de gatos devolvió algo inesperado.",
+  "failureNotFound": "No pudimos encontrar esa raza de gato.",
+  "failureUnknown": "Algo salió mal. Inténtalo de nuevo."
+}

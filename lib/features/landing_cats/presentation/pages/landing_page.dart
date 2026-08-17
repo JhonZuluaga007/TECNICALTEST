@@ -4,9 +4,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/my_app_scaffold.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/text/text_widget.dart';
-import 'package:tecnical_test_pragma/core/config/theme/app_cats_colors.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
+import 'package:tecnical_test_pragma/features/settings/presentation/bloc/theme_mode_cubit.dart';
+import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_image.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/landing_status_views.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/search_delegate_all_catbreeds.dart';
@@ -48,7 +48,9 @@ class _LandingPageState extends State<LandingPage> {
 
   @override
   Widget build(BuildContext context) {
-    final wColor = AppCatsColor();
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
     return BlocBuilder<LandingCatsBloc, LandingCatsState>(
       builder: (context, state) {
         // The breed list exists on only some variants, so the app bar has to ask
@@ -70,20 +72,21 @@ class _LandingPageState extends State<LandingPage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            backgroundColor: wColor.mapColors["W"],
-            title: TextWidget(
-              text: "Catbreeds",
-              fontSize: 20,
-              colorText: wColor.black,
-            ),
+            // Phase 7: `backgroundColor` was pinned to white. An `AppBar` takes
+            // `colorScheme.surface` from the theme, which follows the brightness.
+            title: Text(l10n.appTitle, style: theme.textTheme.titleLarge),
+            actions: const [_ThemeModeButton()],
             bottom: PreferredSize(
               preferredSize: Size(double.infinity, 40.h),
               child: Padding(
                 padding: EdgeInsets.only(left: 12.w, right: 12.w, bottom: 5.h),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: wColor.mapColors["W"],
-                    border: Border.all(color: wColor.black, width: 1),
+                    color: theme.colorScheme.surface,
+                    border: Border.all(
+                      color: theme.colorScheme.outline,
+                      width: 1,
+                    ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Padding(
@@ -91,13 +94,12 @@ class _LandingPageState extends State<LandingPage> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        TextWidget(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w100,
-                          text: "Search by the name",
-                          fontStyle: FontStyle.normal,
-                          colorText: wColor.black,
-                        ),
+                        // The `fontWeight: FontWeight.w100` that used to be here
+                        // is gone rather than ported: Acme ships a single
+                        // Regular weight, so it asked the engine to synthesize a
+                        // thin face that does not exist. `fontStyle:
+                        // FontStyle.normal` was the default spelled out.
+                        Text(l10n.searchHint, style: theme.textTheme.bodyLarge),
                         IconButton(
                           onPressed: () {
                             showSearch(
@@ -205,6 +207,34 @@ class _LandingPageState extends State<LandingPage> {
         SizedBox(height: 12.h),
         Expanded(child: list),
       ],
+    );
+  }
+}
+
+/// The only affordance for the theme, deliberately one button rather than a
+/// settings screen.
+///
+/// Phase 7. Dark mode with no control is invisible to a user whose device is in
+/// light mode, which is most of them — and the roadmap does not have a settings
+/// screen on it.
+///
+/// Its own widget, and `const`, so cycling the theme rebuilds this icon rather
+/// than the whole page and its list.
+class _ThemeModeButton extends StatelessWidget {
+  const _ThemeModeButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ThemeModeCubit, ThemeMode>(
+      builder: (context, mode) => IconButton(
+        tooltip: AppLocalizations.of(context).toggleTheme,
+        onPressed: context.read<ThemeModeCubit>().cycle,
+        icon: Icon(switch (mode) {
+          ThemeMode.system => Icons.brightness_auto_outlined,
+          ThemeMode.light => Icons.light_mode_outlined,
+          ThemeMode.dark => Icons.dark_mode_outlined,
+        }),
+      ),
     );
   }
 }

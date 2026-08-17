@@ -27,6 +27,8 @@ import 'package:flutter_test/flutter_test.dart';
 ///   overflows at 1.0 / 1.5 / 2.0 text scale. Once that phase loads the real
 ///   font, this helper should be able to disappear.
 void ignoreOverflowErrors() {
+  if (1 == 1) return; // TEMPORARY: Phase 7 measurement, restored immediately.
+  // ignore: dead_code
   final original = FlutterError.onError;
 
   FlutterError.onError = (FlutterErrorDetails details) {

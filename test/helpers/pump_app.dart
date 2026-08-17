@@ -5,7 +5,10 @@ import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_all_cats_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_by_id_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_image_use_case.dart';
+import 'package:tecnical_test_pragma/core/design_system/app_theme.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
+import 'package:tecnical_test_pragma/features/settings/presentation/bloc/theme_mode_cubit.dart';
+import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 import 'package:tecnical_test_pragma/routers/app_route.dart';
 
 import 'in_memory_key_value_store.dart';
@@ -63,8 +66,39 @@ extension PumpApp on WidgetTester {
       RepositoryProvider<GetBreedByIdUseCase>.value(
         value: breedByIdUseCase ?? FakeGetBreedByIdUseCase(),
       ),
+      // Phase 7. The landing app bar reads this cubit, and it is cheap enough to
+      // provide unconditionally rather than make every caller remember which
+      // widgets need it.
+      BlocProvider<ThemeModeCubit>(
+        create: (_) => ThemeModeCubit(storage: InMemoryStorage()),
+      ),
     ],
     child: inner,
+  );
+
+  /// The `MaterialApp` every pump goes through.
+  ///
+  /// Phase 7 put the theme and the localization delegates here, in one place. A
+  /// widget calling `AppLocalizations.of(context)` or `Theme.of(context).cats`
+  /// under a bare `MaterialApp` crashes — deliberately, see `CatsTokens` — so
+  /// every widget test in the suite depends on this method rather than on each
+  /// test remembering.
+  ///
+  /// [locale] is fixed to English by default so assertions can match on copy.
+  /// Pass `Locale('es')` to prove a lookup is real rather than a hardcoded string
+  /// that happens to be in the ARB.
+  MaterialApp _app(
+    Widget home, {
+    required Locale locale,
+    ThemeMode? themeMode,
+  }) => MaterialApp(
+    theme: AppTheme.light(),
+    darkTheme: AppTheme.dark(),
+    themeMode: themeMode,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    locale: locale,
+    home: home,
   );
 
   /// Mounts [child] inside a bare `MaterialApp`.
@@ -79,6 +113,8 @@ extension PumpApp on WidgetTester {
     LandingCatsBloc? bloc,
     GetBreedImageUseCase? imageUseCase,
     GetBreedByIdUseCase? breedByIdUseCase,
+    Locale locale = const Locale('en'),
+    ThemeMode? themeMode,
   }) {
     Widget wrap(Widget inner) => _withUseCases(
       inner,
@@ -86,17 +122,14 @@ extension PumpApp on WidgetTester {
       breedByIdUseCase: breedByIdUseCase,
     );
 
+    final app = _app(child, locale: locale, themeMode: themeMode);
+
     if (bloc == null) {
-      return pumpWidget(wrap(MaterialApp(home: child)));
+      return pumpWidget(wrap(app));
     }
 
     return pumpWidget(
-      wrap(
-        BlocProvider<LandingCatsBloc>.value(
-          value: bloc,
-          child: MaterialApp(home: child),
-        ),
-      ),
+      wrap(BlocProvider<LandingCatsBloc>.value(value: bloc, child: app)),
     );
   }
 
@@ -106,6 +139,7 @@ extension PumpApp on WidgetTester {
     String initialLocation = '/',
     GetBreedImageUseCase? imageUseCase,
     GetBreedByIdUseCase? breedByIdUseCase,
+    Locale locale = const Locale('en'),
   }) {
     final router = AppRoute.router(initialLocation: initialLocation);
     addTearDown(router.dispose);
@@ -114,7 +148,17 @@ extension PumpApp on WidgetTester {
       _withUseCases(
         BlocProvider<LandingCatsBloc>.value(
           value: bloc,
-          child: MaterialApp.router(routerConfig: router),
+          // Phase 7: same theme and delegates as `_app`, but `MaterialApp.router`
+          // takes a `routerConfig` instead of a `home`, so the two cannot share a
+          // constructor call.
+          child: MaterialApp.router(
+            theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: locale,
+            routerConfig: router,
+          ),
         ),
         imageUseCase: imageUseCase,
         breedByIdUseCase: breedByIdUseCase,

@@ -22,7 +22,7 @@ This repository is under **active modernization**: it started on Flutter 3.16.7 
 | 3 | Dart 3: sealed classes + pattern matching | ✅ Done |
 | 4 | Data layer: freezed, immutable entity, N+1, secrets | ✅ Done |
 | 5 | DI: kiwi → get_it + injectable | ✅ Done |
-| 6 | Persistence: hydrated_bloc + TTL cache | ⬜ Pending |
+| 6 | Persistence: hydrated_bloc + TTL cache, route by id | ✅ Done |
 | 7 | Design system: Material 3 ThemeData, tokens, dark mode, l10n | ⬜ Pending |
 | 8 | Real adaptive layout (drop `flutter_screenutil`) | ⬜ Pending |
 | 9 | Dedupe, reusable components, CI and coverage | ⬜ Pending |
@@ -57,7 +57,8 @@ lib/
 - **Models:** `freezed` + `json_serializable`; the data model does **not** extend the domain entity — conversion is an explicit `toEntity()` mapper
 - **Navigation:** `go_router`, declarative nested routes
 - **Errors:** `sealed class CatsFailure` carried by a `sealed class CatsResult<T>` (`Ok` / `Err`) — no `Either` package. Transient failures are retried with backoff (`core/utils/retry.dart`); 4xx and malformed payloads are not
-- **DI:** `get_it` + `injectable`; the graph is generated from annotations, so a missing binding is a build failure rather than a runtime error
+- **DI:** `get_it` + `injectable`; the graph is generated from annotations, so a missing binding is a build failure rather than a runtime error — but only because Phase 6 set `throwOnMissingDependencies: true`, which is **not** the default. See the Phase 6 changelog
+- **Persistence:** one `hydrated_bloc` `Storage` box behind a two-method `KeyValueStore` interface, holding the search history and a TTL'd breeds cache
 - **Tests:** `flutter_test` + `bloc_test` + `mocktail`, plus `MockClient` from `package:http/testing.dart` at the HTTP boundary
 
 ---
@@ -606,3 +607,94 @@ Two mechanical details worth knowing:
 | Dropping `flutter_screenutil`, adaptive layout, goldens | 8 |
 | CI (including the stale-codegen check above), a coverage gate, `unawaited_futures` in `analysis_options.yaml` — which is what would make a forgotten `await Injector.setup()` an error rather than a review catch | 9 |
 | get_it **scopes**, injectable **environments**, per-feature DI modules: no second consumer justifies them yet | 9 revisits |
+
+### Phase 6 — Persistence: hydrated_bloc, a TTL cache and routing by id
+
+**Goal:** make the app remember. Before this phase it remembered nothing: every cold start asked the network for a list of cat breeds that changes roughly never, every return from the detail screen asked again, the search history died with the process, and losing connectivity produced an error screen even when a complete list had arrived five minutes earlier.
+
+Four changes, and they are one change: **there was no layer that remembered.**
+
+#### The refetch, and where it was hiding
+
+`LandingPage.initState` dispatched `AllCatsEvent`. `go_router` re-creates that page on every return from the detail screen, so every press of the back button was a network round trip to redisplay a list the app already had. Phase 4 had made that one request instead of 66, which made it cheap enough to stop being obvious — not cheap enough to be right.
+
+The dispatch moved to where the bloc is created, in `main.dart`. Two consequences:
+
+- **`lazy: false` is load-bearing**, and it was not obvious. `BlocProvider` builds on first read by default, so with the default the dispatch would still have waited for `LandingPage` to look the bloc up — i.e. until after the splash, which is the timing the move was meant to improve. `app_test.dart` asserts the request has happened while the splash is still on screen; without the flag that assertion fails.
+- The page became a pure consumer, so widget tests dispatch explicitly instead of relying on a side effect of mounting a widget. That is more honest, and it is why `pump_app.dart` grew a `fetchOnBuild` flag.
+
+#### The cache, and the one thing it must never do
+
+`LandingCatsLocalDataSource` stores the breeds under a **versioned** key with a `savedAt` stamp, and reports expiry rather than hiding it — the repository needs an expired entry, because serving stale breeds beats an error screen.
+
+`readBreeds` **never throws**. Anything unreadable — a payload written by an older `CatBreedModel`, a half-written entry, a value of the wrong type — reads as "no cache" and the caller goes to the network. This is not defensive programming for its own sake: a cache that can throw is a cache that can make the app unlaunchable after a deploy, and the only fix a user has for that is reinstalling.
+
+An honest note on that guard, found by mutation: the explicit shape checks inside `readBreeds` are **redundant with its `catch`**. Deleting them and casting instead leaves the whole suite green, because every bad shape reaches the same `return null` either way. They stay because they state the contract a payload has to meet rather than leaving it implicit in which cast happens to throw first — but only one of the two is load-bearing, and it is the `catch`.
+
+It caches **models, not entities**, which is what Phase 4's `explicit_to_json: true` was for: without it a nested `WeightModel` serialises as an object rather than a map and cannot be read back. `build.yaml` predicted this phase by name.
+
+#### `BreedsSnapshot`, and an `Ok` that carries a failure
+
+`getAllCats` returns `CatsResult<BreedsSnapshot>` — `fresh` or `stale(breeds, failure)` — instead of a bare list. The policy:
+
+| Cache | Network | Result |
+|---|---|---|
+| fresh | **not asked** | `Ok(fresh)` |
+| expired or absent | ok | `Ok(fresh)`, cache rewritten |
+| expired | failed | `Ok(stale(breeds, failure))` |
+| absent | failed | `Err(failure)` |
+
+An `Ok` holding a failure reads oddly, and that is deliberate: the *call* produced usable data, and the failure describes its freshness, not its outcome. The alternative — a third `CatsResult` variant — would have complicated a generic transport type used by three unrelated methods.
+
+`breeds` is declared on both snapshot variants, so freezed exposes it on the sealed base and `snapshot.breeds` reads without a `switch` — the same shared-property mechanism Phase 4 used for `searchHistory`.
+
+#### `CatsStale`, and a tension worth naming
+
+The new state variant the roadmap promised. The `switch` in `landing_page.dart` stopped compiling until it had a branch, which is exactly what Phase 3's sealed modelling was for.
+
+**But Phase 3 argued that the value of that modelling was that "loaded with an error" could not be expressed**, and `CatsStale` makes it expressible again. The difference is real but worth stating rather than glossing: before, it was an accidental product of three always-present fields plus an `is` check with an implicit `else` — which is how an API failure showed a spinner forever. Now it is one named state, with a required branch and its own tests. That is not a regression, but it is not free either.
+
+What it buys is the app working offline: a list with a `StaleBanner` explaining why it is old, where there used to be an error screen and no list at all.
+
+#### Routing by id
+
+The breed used to travel in `go_router`'s `extra`, which is not reconstructible from a URL, so a deep link to `/home/detail` arrived with `state.extra == null` and `(state.extra!) as CatBreedEntity` red-screened. Phase 2 added a `redirect` sending those to the home screen — a way of not crashing, not a way of working.
+
+The route is now `detail/:id` and **the redirect is gone, with nothing in its place**. `DetailCatPage` takes a `String breedId` and resolves it through a `DetailCatCubit`, so `/home/detail/abys` opens the breed on a cold start. Usually at no network cost: `getBreedById` goes through the same cache the landing screen already filled.
+
+The test swap says it best. `a deep link to /home/detail with no extra redirects to /home without crashing` was deleted; `a cold deep link to /home/detail/<id> opens the breed` replaces it.
+
+#### What this corrects in Phase 5
+
+Phase 5 sold `injectable` over `kiwi` on the claim that **"a missing binding is a build failure instead of a runtime error"**. Measured here against `injectable_annotations.dart:107` and `resolver_utils.dart:38-63`: `throwOnMissingDependencies` defaults to **`false`**, so unresolved dependencies are collected into a list of *printed messages*, the build succeeds, and the generated `gh<T>()` throws later — on the screen that needed it, which is precisely the kiwi behaviour the migration was meant to leave behind.
+
+The claim is now true, because `@InjectableInit(throwOnMissingDependencies: true)` makes it true. The one deliberate exception, `KeyValueStore`, is declared with `ignoreUnregisteredTypes` rather than tolerated silently: it is registered by `Injector.setup` from the `Storage` its caller passes in.
+
+#### Two design points worth recording
+
+**`hydrated_bloc`'s `Storage` is reused as the cache's backend**, behind a two-method `KeyValueStore` interface in `core/storage/`. The app already had a Hive-backed key-value store open for the search history; adding a second persistence package for the breeds cache would have meant a second thing to initialise and a second thing to close. The wrapper exists because `package:hydrated_bloc` re-exports `package:bloc`, and the data layer has no business seeing `Bloc`.
+
+**The bloc takes its `Storage` through the constructor**, so the process-wide `HydratedBloc.storage` static is never set. That is not style. `flutter_test_config.dart` runs once per *file*, and hydrated_bloc keys state by runtime type, so a single global store would have leaked one test's search history into the next — and 11 assertions in `landing_cats_bloc_test.dart` would have started depending on execution order. Per-instance storage also means that file did not need to change at all.
+
+#### Verification
+
+- `fvm flutter analyze` → **No issues found!**
+- `fvm flutter test` → **258 tests** (188 before)
+- Coverage: **97.1%** hand-written / **100%** generated / **97.4%** overall, same "of reached lines" caveat as Phases 2-5
+- **18/18 reversions caught.** Every behaviour this phase added was undone in the source and its test confirmed red
+
+The revert check found two things the tests did not:
+
+**A test that passed for the wrong reason, written this phase.** `the search screen still works offline` asserted `find.text('Abyssinian')` after typing into the search field — which matches the *query text*, present whether or not the delegate found anything. Dropping `CatsStale` from the app bar's pattern left it green. It now counts result cards.
+
+**Three pre-existing false greens**, fixed in passing: `landing_status_views_test` asserted `hasLength(5)` over "every failure variant" while listing them by hand (a sixth variant would have left it green and lying); and two `landing_page_test` cases never reached the state they claimed to test, because `CatsInitial` and `CatsLoading` render the same widget.
+
+#### Deliberately not done
+
+| Left alone | Owner |
+|---|---|
+| Design system, Material 3 `ThemeData`, dark mode, l10n — which takes `messageFor`'s strings including the new `StaleBanner` copy — and bundling Acme | 7 |
+| Dropping `flutter_screenutil`, real breakpoints, `GridView`, goldens | 8 |
+| Dedupe, promoting `BreedImage` and the status views to `core/common_widgets/` now that the detail screen uses both, `CatsFailure` logging, CI (**including the stale-codegen check Phase 5 asked for**), a coverage gate, `analysis_options.yaml` hardening | 9 |
+| Manual cache invalidation (pull-to-refresh): no gesture in the UI calls for it, and the TTL covers the normal case. The `Refresh` button on the stale banner is the one entry point, and it re-fetches rather than invalidating | 7 if the gesture lands |
+| Encrypting the storage (`HydratedAesCipher`): nothing sensitive is stored — cat breed names and what the user searched for | — |
