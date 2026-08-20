@@ -11,7 +11,6 @@ import 'package:tecnical_test_pragma/features/splash/presentation/pages/splash_c
 import 'package:tecnical_test_pragma/routers/app_route.dart';
 
 import '../helpers/builders.dart';
-import '../helpers/ignore_overflow_errors.dart';
 import '../helpers/mocks.dart';
 import '../helpers/pump_app.dart';
 
@@ -61,7 +60,6 @@ void main() {
     testWidgets('navigating to the detail by name carries the id', (
       tester,
     ) async {
-      ignoreOverflowErrors();
       final bloc = tester.buildBloc(useCase, fetchOnBuild: true);
 
       await tester.pumpRouter(bloc: bloc, initialLocation: '/home');
@@ -95,7 +93,6 @@ void main() {
       //
       // Now the id is in the path, so the deep link **works**: no landing screen
       // visited, no bloc state consulted, the breed on screen.
-      ignoreOverflowErrors();
       final breed = catBreedEntity(id: 'abys', name: 'Abyssinian');
       final breedByIdUseCase = MockGetBreedByIdUseCase();
       when(() => breedByIdUseCase('abys')).thenAnswer((_) async => Ok(breed));

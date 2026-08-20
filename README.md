@@ -23,8 +23,8 @@ This repository is under **active modernization**: it started on Flutter 3.16.7 
 | 4 | Data layer: freezed, immutable entity, N+1, secrets | ✅ Done |
 | 5 | DI: kiwi → get_it + injectable | ✅ Done |
 | 6 | Persistence: hydrated_bloc + TTL cache, route by id | ✅ Done |
-| 7 | Design system: Material 3 ThemeData, tokens, dark mode, l10n | ⬜ Pending |
-| 8 | Real adaptive layout (drop `flutter_screenutil`) | ⬜ Pending |
+| 7 | Design system: Material 3 ThemeData, tokens, dark mode, l10n | ✅ Done |
+| 8 | Real adaptive layout (drop `flutter_screenutil`) | ✅ Done |
 | 9 | Dedupe, reusable components, CI and coverage | ⬜ Pending |
 
 The order is not arbitrary. The SDK upgrade goes first because the other way around is **impossible**: `freezed 3.x`, `injectable 3.x` and `flutter_lints 6` require Dart ≥3.8, and `hydrated_bloc 11` requires `bloc ^9`, while Flutter 3.16.7 ships Dart 3.2 — `pub get` simply fails. Tests land in Phase 2 rather than at the end, because Phases 3-8 are precisely the ones that change behavior silently, and doing them without a regression net would be guesswork.
@@ -152,14 +152,15 @@ awk -F: '/^SF:/{f=$2} /^LF:/{lf=$2} /^LH:/{lh=$2} /^end_of_record/{printf "%6.1f
 
 `test/` mirrors `lib/`. Three pieces of the harness are worth knowing before you write a new test.
 
-**`test/flutter_test_config.dart`** — Flutter discovers it automatically and runs it once per test file. It disables `google_fonts` runtime fetching (otherwise every widget test tries the asset bundle, then `path_provider`, then HTTP, and spews a wall of `debugPrint` — because **every** screen uses `TextWidget` → `GoogleFonts.acme`), configures `ScreenUtil` (without it any `.w`/`.h` throws `LateInitializationError`). It used to also set `EquatableConfig.stringify`; Phase 4 dropped `equatable`, and freezed's generated `toString` lists every field unconditionally.
+**`test/flutter_test_config.dart`** — Flutter discovers it automatically and runs it once per test file. As of Phase 8 it has exactly one job: **load the bundled Acme with a `FontLoader`.** `flutter_test` has no font-loading code of its own, so without it every glyph is drawn from the test font, where each character is a full em square. It used to also disable `google_fonts` runtime fetching (Phase 7 removed the package), configure `ScreenUtil` (Phase 8 removed that package too) and set `EquatableConfig.stringify` (Phase 4 dropped `equatable`).
 
-**Two zone gotchas, both the same shape, both encapsulated in helpers:**
+**The zone gotcha, encapsulated in a helper:**
 
-- **`PumpApp.buildBloc` — build the bloc inside the `testWidgets` body, never in a `setUp`.** `setUp` runs outside `testWidgets`' `FakeAsync` zone, so the bloc's internal microtasks stay bound to the real zone, `pump`/`pumpAndSettle` never drain them, the state stays stuck on `CatsLoading`, and `pumpAndSettle` ends in *timed out*.
-- **`ignoreOverflowErrors()` — same rule**, because `testWidgets` installs its own `FlutterError.onError` after the `setUp` callbacks run.
+- **`PumpApp.buildBloc` — build the bloc inside the `testWidgets` body, never in a `setUp`.** `setUp` runs outside `testWidgets`' `FakeAsync` zone, so the bloc's internal microtasks stay bound to the real zone, `pump`/`pumpAndSettle` never drain them, the state stays stuck on `CatsLoading`, and `pumpAndSettle` ends in *timed out*. The same rule applies to any `FlutterError.onError` override, because `testWidgets` installs its own after the `setUp` callbacks run.
 
-On that overflow helper — measured, not assumed: under `flutter test` there is no Acme font, so Flutter uses its test font, where **every glyph is a full em square**. `Text('Intelligence:', fontSize: 20)` measures exactly **260 px** in tests (13 chars × 20) against roughly 130 px with real Acme, which overflows the `SizedBox(width: 190.w)` that `CardCatWidget` gives the nested `BreedCharacteristicWidget`. **This is a font-metrics artifact, not a layout bug — the app does not overflow.** Phase 7 bundles the font and Phase 8 audits layout for real; the helper should disappear there.
+**`test/helpers/window_size.dart`** (Phase 8) — `setWindowSize(tester, size)` and the four device sizes. `flutter_test` defaults to an **800x600** surface, which `WindowSize.fromWidth` classifies as `medium`: leave it alone and the whole suite exercises the two-column grid, never the one-column list a phone shows. `PumpApp` therefore defaults to a phone.
+
+~~On that overflow helper — measured, not assumed: `Text('Intelligence:', fontSize: 20)` measures exactly **260 px** under the test font against roughly 130 px with real Acme. **This is a font-metrics artifact, not a layout bug — the app does not overflow.**~~ **Half retracted in Phase 8.** The font-metrics explanation was correct and the helper is gone, but "the app does not overflow" was not: with the real font, the label renders at 107.6 px at text scale 1.0 (not "roughly 130") and **215.1 px at scale 2.0**, against a `SizedBox(width: 190.w)` — so `CardCatWidget` overflowed by 37 px at the largest system font size, and the helper had been hiding it. See the Phase 8 changelog.
 
 **Fixtures.** `test/fixtures/breeds_full.json` is the real TheCatAPI payload captured on **2026-08-10**: 67 breeds, of which exactly 2 (`European Burmese`, `Malayan`) carry no `reference_image_id`. The trimmed variants are derived mechanically from that file; only four are hand-written, because the live API never produces them (`weight: null`, null `imperial`/`metric`, an empty array, and an image response with no `url` key).
 
@@ -693,8 +694,40 @@ The revert check found two things the tests did not:
 
 | Left alone | Owner |
 |---|---|
-| Design system, Material 3 `ThemeData`, dark mode, l10n — which takes `messageFor`'s strings including the new `StaleBanner` copy — and bundling Acme | 7 |
-| Dropping `flutter_screenutil`, real breakpoints, `GridView`, goldens | 8 |
+| Design system, Material 3 `ThemeData`, dark mode, l10n — which takes `messageFor`'s strings including the new `StaleBanner` copy — and bundling Acme | 7 ✅ |
+| Dropping `flutter_screenutil`, real breakpoints, `GridView`, goldens | 8 ✅ |
 | Dedupe, promoting `BreedImage` and the status views to `core/common_widgets/` now that the detail screen uses both, `CatsFailure` logging, CI (**including the stale-codegen check Phase 5 asked for**), a coverage gate, `analysis_options.yaml` hardening | 9 |
 | Manual cache invalidation (pull-to-refresh): no gesture in the UI calls for it, and the TTL covers the normal case. The `Refresh` button on the stale banner is the one entry point, and it re-fetches rather than invalidating | 7 if the gesture lands |
 | Encrypting the storage (`HydratedAesCipher`): nothing sensitive is stored — cat breed names and what the user searched for | — |
+
+### Phase 7 — Design system: Material 3, dark mode and en/es localization
+
+> Result: 285 tests, analyze clean, one package removed and one screen-level feature added — the app follows the device's light/dark setting and speaks two languages. It also merged with two files broken by a test agent that died mid-run; Phase 8 repairs them, and the PR doc records it rather than tidying it away.
+
+`google_fonts` fetched Acme at runtime on every screen. It is now an asset (`assets/fonts/`, with its `OFL.txt` beside it, as the licence requires), which cost exactly one package: `crypto`, `http` and `path_provider` all survive its removal. Bundling it is also what lets `flutter_test` load a real font, which Phase 8 needed for goldens.
+
+Colour moved from `AppCatsColor`'s hardcoded values — including the `"LigthGreen"` typos Phase 0 deliberately left alone — to `ColorScheme.fromSeed` over the app's existing accent green, plus a `ThemeExtension` called `CatsTokens` for the one pair with no Material 3 role: a filled and an empty rating dot have to stay legible against **each other**, not against the surface. `ThemeData.cats` reads it with a `!`, deliberately: a screen without the theme is a bug that should be loud, and the design proved itself when a test with a bare `MaterialApp` failed exactly that way.
+
+Every hardcoded string moved into `lib/l10n/app_en.arb` and `app_es.arb` (19 keys), with `nullable-getter: false` and `required-resource-attributes: true` so a missing translation is a build failure. English values were copied character for character, so the diff shows a move, not a rewrite. `messageFor` stayed a top-level pure function taking `AppLocalizations` first — a `BuildContext` would have turned eight unit tests into widget tests.
+
+Dark mode is a `HydratedCubit<ThemeMode>` above the `MaterialApp`, sharing the storage box the app already opens, with one app-bar button cycling system → light → dark.
+
+**Honest note:** the `TextWidget` wrapper was deleted rather than restyled — it existed only to call `GoogleFonts.acme`, and with a `fontFamily` on `ThemeData` every `Text` gets it for free. And the phase's mutation pass never finished, which is why `main` was left red; see `docs/pr/phase-7-design-system.md`.
+
+### Phase 8 — Real adaptive layout, and the overflow that was real
+
+> Result: 307 tests across 32 files, analyze clean, 809/847 = 95.5% of reached lines, 9/9 reversions caught, `flutter_screenutil` gone and 4 golden tests added — plus a layout bug that four phases of tooling had been hiding.
+
+**The bug.** Every phase since 2 carried `ignoreOverflowErrors()` and an explanation: `flutter_test` has no real font, its test font draws every glyph as a full em square, so overflow reports were an artifact. True — and it hid a second overflow that was not. Measured with the Acme Phase 7 bundled, `Text('Intelligence:')` at `titleLarge` is **107.6 px** at text scale 1.0 and **215.1 px at 2.0**, against the `SizedBox(width: 190.w)` `CardCatWidget` imposed. The card overflowed by **37 px** on a 390 px phone at the largest system font size. That is the consequence Phase 1 predicted when it deleted, rather than migrated, the `textScaleFactor: 1.0` override that used to cancel the user's accessibility setting. The fix is a `Wrap`, not a breakpoint: the meter drops onto its own line when the row cannot hold it, reacting to the text size the user actually chose.
+
+**How the helper's removal was proved rather than assumed.** Phase 7 accidentally shipped a mutation inside `ignoreOverflowErrors()` — `if (1 == 1) return;`. With the helper a no-op, **all 23 of its real call sites still passed**. It had been dead weight since the font became real, and it is gone with them.
+
+**`flutter_screenutil` is gone**, along with `ScreenUtil.init` running inside `build` on every frame, `AppCatsResponsiveApp` and the 640 px threshold in `core/config/helpers/responsive/`. The 38 `.w`/`.h`/`.sp` call sites became `AppSpacing` constants. That package multiplied every gap by `width / 390`, so a 12 px gutter became 33 px on a desktop window — Material spacing is constant across window sizes; what adapts is the layout.
+
+**`WindowSize`** (`core/design_system/breakpoints.dart`) carries the Material 3 classes at 600 / 840 / 1200 and is hand-rolled — verified, not assumed: `package:flutter/material` in 3.44.9 ships no such API, and a dependency to hold three numbers and an enum is not a trade worth making. The landing screen renders a `ListView` at one column and a `GridView` of 2 / 3 / 4 above it. Deliberately not a one-column grid: `SliverGridDelegate` forces every tile to the same extent, which would leave a gap under every card on a phone. The detail screen caps its description at 720 px, because line length is typographic and not a breakpoint. **No `NavigationRail`**, which the roadmap named: the router has one top-level destination, so a rail would have had a single item.
+
+**The test surface was lying.** `flutter_test` defaults to 800x600 — a `medium` window. The moment the grid landed, the whole suite was exercising two columns and the one-column list phones show had no coverage. `PumpApp` now defaults to a phone and a test that wants the grid asks for it.
+
+**Four goldens**, one per window size class — only possible because Phase 7 bundled the font, and they earn their place immediately: `crossAxisCount == 3` is satisfied just as well by three columns of clipped rubble.
+
+**Honest notes.** Mutation found a redundant argument defended by a false comment: `semanticChildCount: breeds.length` on the grid, with a note claiming `GridView.builder` does not infer it — `scroll_view.dart:2067` is `semanticChildCount ?? itemCount`, so both are gone and the assertion was retargeted and re-verified. `app_test.dart`'s exact `imageRequests == builtCards` was relaxed, because `ListView`'s 250 px `cacheExtent` builds past the viewport and the equality only held at 800x600; the same test moved onto the real 67-breed payload, where "fewer requests than breeds" is unambiguous instead of viewport arithmetic. And whether the goldens are stable across machines is **unverified** — Phase 9's CI is where that gets an answer.

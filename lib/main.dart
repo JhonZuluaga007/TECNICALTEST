@@ -1,11 +1,9 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:tecnical_test_pragma/app_cats_responsive.dart';
 import 'package:tecnical_test_pragma/core/design_system/app_theme.dart';
 import 'package:tecnical_test_pragma/core/injector/injector.dart';
 import 'package:tecnical_test_pragma/features/settings/presentation/bloc/theme_mode_cubit.dart';
@@ -118,41 +116,33 @@ class _MyAppState extends State<MyApp> {
               ThemeModeCubit(storage: Injector.resolve<Storage>()),
         ),
       ],
-      child: ScreenUtilInit(
-        minTextAdapt: true,
-        // `useInheritedMediaQuery` was removed in Phase 1: it was a workaround
-        // for Flutter <3.10 and is a no-op today.
-        designSize: AppCatsResponsiveApp.designSizeSmall,
-        builder: ((context, child) => BlocBuilder<ThemeModeCubit, ThemeMode>(
-          builder: (context, themeMode) => MaterialApp.router(
-            // Phase 7. This block sat here commented out since before Phase 0; the
-            // list it named by hand is exactly what `AppLocalizations` now exposes,
-            // with the app's own delegate added and the supported locales derived
-            // from the ARB files rather than restated.
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            theme: AppTheme.light(),
-            darkTheme: AppTheme.dark(),
-            themeMode: themeMode,
-            builder: (context, child) {
-              // TODO(phase 8): `ScreenUtil.init` inside `build` is a side effect
-              // in the widget tree; it disappears when flutter_screenutil goes.
-              ScreenUtil.init(context);
-              // A `MediaQuery(...copyWith(alwaysUse24HourFormat: false))` used to
-              // be here. Removed in Phase 1: it forced 12-hour formatting while
-              // ignoring the system locale, and the app displays no times at all,
-              // so it was dead configuration that also overrode a user setting.
-              return AppCatsResponsiveApp(child: child!);
-            },
-
-            // `onGenerateTitle`, not `title`: the value now comes from the ARBs, so
-            // it needs a context that has the delegates above it. That is exactly
-            // what this callback provides, and it re-runs on a locale change.
-            onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
-            routerConfig: _router,
-            debugShowCheckedModeBanner: false,
-          ),
-        )),
+      // Phase 8 removed the two wrappers that used to sit here. `ScreenUtilInit`
+      // is gone with the package, and so is the `builder:` below it, which
+      // existed only to call `ScreenUtil.init(context)` — a side effect run from
+      // inside a `build`, on every frame, to configure a global.
+      //
+      // What replaced them is nothing: layout now reads `MediaQuery.sizeOf`
+      // where it needs to, through `WindowSize`. A `MaterialApp.builder` that
+      // wraps every route is the wrong place for a decision only one screen
+      // makes.
+      child: BlocBuilder<ThemeModeCubit, ThemeMode>(
+        builder: (context, themeMode) => MaterialApp.router(
+          // Phase 7. This block sat here commented out since before Phase 0; the
+          // list it named by hand is exactly what `AppLocalizations` now exposes,
+          // with the app's own delegate added and the supported locales derived
+          // from the ARB files rather than restated.
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: themeMode,
+          // `onGenerateTitle`, not `title`: the value now comes from the ARBs, so
+          // it needs a context that has the delegates above it. That is exactly
+          // what this callback provides, and it re-runs on a locale change.
+          onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+          routerConfig: _router,
+          debugShowCheckedModeBanner: false,
+        ),
       ),
     );
   }

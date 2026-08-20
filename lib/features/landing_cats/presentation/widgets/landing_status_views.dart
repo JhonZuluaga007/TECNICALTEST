@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
 import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
 import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 
@@ -37,16 +37,16 @@ class CatsEmptyView extends StatelessWidget {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.pets_outlined,
-              size: 48.sp,
+              size: 48,
               color: theme.colorScheme.onSurfaceVariant,
             ),
-            SizedBox(height: 12.h),
+            const SizedBox(height: AppSpacing.md),
             Text(
               AppLocalizations.of(context).emptyBreeds,
               textAlign: TextAlign.center,
@@ -77,22 +77,18 @@ class CatsErrorView extends StatelessWidget {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 48.sp,
-              color: theme.colorScheme.error,
-            ),
-            SizedBox(height: 12.h),
+            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+            const SizedBox(height: AppSpacing.md),
             Text(
               messageFor(l10n, failure),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyLarge,
             ),
-            SizedBox(height: 16.h),
+            const SizedBox(height: AppSpacing.lg),
             ElevatedButton(onPressed: onRetry, child: Text(l10n.retry)),
           ],
         ),
@@ -123,7 +119,10 @@ class StaleBanner extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
         border: Border.all(color: theme.colorScheme.outline, width: 1),
@@ -133,10 +132,10 @@ class StaleBanner extends StatelessWidget {
         children: [
           Icon(
             Icons.cloud_off_outlined,
-            size: 20.sp,
+            size: 20,
             color: theme.colorScheme.onSurfaceVariant,
           ),
-          SizedBox(width: 8.w),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             // The ARB template keeps the ordering this comment used to defend:
             // the copy says the list is old BEFORE saying why. The cause is
@@ -148,7 +147,7 @@ class StaleBanner extends StatelessWidget {
               style: theme.textTheme.bodyMedium,
             ),
           ),
-          SizedBox(width: 8.w),
+          const SizedBox(width: AppSpacing.sm),
           TextButton(onPressed: onRetry, child: Text(l10n.refresh)),
         ],
       ),

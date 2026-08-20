@@ -12,7 +12,6 @@ import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/
 import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 
 import '../../../../helpers/builders.dart';
-import '../../../../helpers/ignore_overflow_errors.dart';
 import '../../../../helpers/mocks.dart';
 
 /// This uses `MockLandingCatsBloc` (`MockBloc` + `whenListen`) rather than the
@@ -105,7 +104,6 @@ void main() {
     });
 
     testWidgets('tapping a history entry applies that query', (tester) async {
-      ignoreOverflowErrors();
       seed(loaded(history: const ['siamese']));
 
       await openSearch(tester);
@@ -136,7 +134,6 @@ void main() {
 
   group('SearchDelegateAllCatbreeds filtering', () {
     testWidgets('filters by name, case-insensitively', (tester) async {
-      ignoreOverflowErrors();
       seed(loaded());
 
       await openSearch(tester);
@@ -163,7 +160,6 @@ void main() {
     testWidgets('submitting the query dispatches the event exactly once', (
       tester,
     ) async {
-      ignoreOverflowErrors();
       seed(loaded());
 
       await openSearch(tester);
@@ -185,7 +181,6 @@ void main() {
     });
 
     testWidgets('trims the query before dispatching', (tester) async {
-      ignoreOverflowErrors();
       seed(loaded());
 
       await openSearch(tester);
@@ -217,7 +212,6 @@ void main() {
       // The highest-value test in this file. Fails before Phase 2: the delegate
       // did `filterNamesSearched.add(query)` on the SAME list instance living in
       // `state.searchHistory`.
-      ignoreOverflowErrors();
       final stateHistory = ['siamese'];
       seed(loaded(history: stateHistory));
 
@@ -241,7 +235,6 @@ void main() {
       // dispose hook): one leak per tap on the search icon. `primary: false` with
       // no controller gives each list its own position and stops them from going
       // back to sharing the `ModalRoute`'s.
-      ignoreOverflowErrors();
       seed(loaded());
 
       await openSearch(tester);

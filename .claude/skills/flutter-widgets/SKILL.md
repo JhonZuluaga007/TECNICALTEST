@@ -126,9 +126,23 @@ The use cases a card needs come from the widget tree (`RepositoryProvider`), not
 to `TextScaler`: its purpose was to cancel two of the user's accessibility settings. Same for
 `alwaysUse24HourFormat: false`. If a layout breaks at large text, fix the layout.
 
-## `flutter_screenutil` — pending removal, keep it consistent meanwhile
+## Sizing and breakpoints
 
-`.w`/`.h`/`.sp` are used throughout and `ScreenUtil.init` currently runs inside `build` (a
-side effect in the widget tree, marked `TODO(phase 8)`). Until Phase 8 drops the package:
-match the surrounding style rather than mixing raw pixels into a file that uses `.w`. Do not
-add new `ScreenUtil.init` calls.
+`flutter_screenutil` is **gone** (Phase 8). Do not reintroduce `.w`/`.h`/`.sp`, and do not add
+a `MaterialApp.builder` that configures a global from inside `build`.
+
+- **Spacing** comes from `AppSpacing` (`core/design_system/spacing.dart`): `xs` 4, `sm` 8,
+  `md` 12, `lg` 16, `xl` 24. Constant at every window size — what adapts is the layout, not
+  the size of a gap. `flutter_screenutil` multiplied every gap by `width / 390`, so a 12 px
+  gutter became 33 px on a desktop window.
+- **Layout** reads `WindowSize.of(context)` (`core/design_system/breakpoints.dart`):
+  compact / medium / expanded / large at 600 / 840 / 1200, with `columns` 1/2/3/4. The landing
+  screen renders a `ListView` at one column and a `GridView` above it — deliberately not a
+  one-column grid, which would force every card to the same height.
+- **A cap on line length is not a breakpoint.** The detail screen constrains its description
+  to 720 px with a `ConstrainedBox`, because the reason is typographic and applies at whatever
+  width it happens to be reached.
+- **Text scale is the user's setting, and layouts must survive it.** Measured in Phase 8:
+  `CardCatWidget` overflowed by 37 px at scale 2.0 on a phone. The fix was a `Wrap`, not a
+  breakpoint — it reacts to the size the text actually took. New layouts get a test at
+  1.0 / 1.5 / 2.0.

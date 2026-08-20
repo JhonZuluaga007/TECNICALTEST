@@ -11,8 +11,8 @@ import 'package:tecnical_test_pragma/features/splash/presentation/pages/splash_c
 import 'package:tecnical_test_pragma/main.dart';
 
 import 'helpers/fixture_reader.dart';
-import 'helpers/ignore_overflow_errors.dart';
 import 'helpers/in_memory_key_value_store.dart';
+import 'helpers/window_size.dart';
 
 /// The only test proving that DI + router + bloc + datasource + storage are wired
 /// together, and therefore the one Phases 3 through 9 are most likely to break.
@@ -41,24 +41,33 @@ void main() {
       httpClient: MockClient((request) async {
         requestedUrls.add(request.url.toString());
         if (request.url.toString() == Endpoints.urlAllCats) {
-          return jsonResponse(fixture('breeds_3.json'));
+          // Phase 8 switched this from `breeds_3.json` to the real 67-breed
+          // payload. With three breeds, "fewer image requests than breeds" was
+          // arithmetic about the viewport — at a phone size all three ended up
+          // built, cache extent included, and the claim became false without
+          // anything regressing. With 67 it is unambiguous at every window size.
+          return jsonResponse(fixture('breeds_full.json'));
         }
         return jsonResponse(fixture('image_ok.json'));
       }),
     );
 
+    // Phase 8: pinned to a phone. `flutter_test`'s default 800x600 surface is a
+    // `WindowSize.medium` window, where the landing renders a two-column grid
+    // that fits all three cards — and the assertion below, "fewer image requests
+    // than breeds in the payload", would then be measuring the viewport rather
+    // than the laziness it is there to prove.
+    setWindowSize(tester, phone);
     await tester.pumpWidget(const MyApp());
-    // `ScreenUtilInit` returns `SizedBox.shrink()` until a
-    // `didChangeDependencies` and a `FutureBuilder` both resolve, so the first
-    // pump renders nothing.
+    // Phase 8: the note that used to be here explained that `ScreenUtilInit`
+    // rendered `SizedBox.shrink()` on the first pump. That wrapper is gone; the
+    // settle is still needed for the router and the initial fetch.
     await tester.pumpAndSettle();
 
     return requestedUrls;
   }
 
   testWidgets('splash -> landing with breeds -> detail', (tester) async {
-    ignoreOverflowErrors();
-
     final requestedUrls = await bootApp(tester);
 
     expect(find.byType(SplashCatBreeds), findsOneWidget);
@@ -82,14 +91,14 @@ void main() {
     // Phase 4's fix, end to end through the real DI graph, router, bloc and
     // datasource — the one place it is observable rather than asserted on a unit.
     //
-    // It used to be `hasLength(4)`: 1 breeds request + 1 image request per breed
+    // It used to be `hasLength(68)`: 1 breeds request + 1 image request per breed
     // in the payload, all of them resolved inside `getAllCats` before this screen
-    // could paint at all. With the real 67-breed payload that is 66.
+    // could paint at all.
     //
     // Now the breeds request is the only one that happens up front, and images are
-    // requested by the cards `ListView` actually builds. Only 2 of the 3 cards fit
-    // in the 800x600 test surface, which is why the total is 3 and not 4 — and that
-    // difference IS the fix: it scales with what is on screen, not with the payload.
+    // requested by the cards the `ListView` actually builds. 67 breeds arrive and
+    // a handful of requests go out — that difference IS the fix: it scales with
+    // what is on screen, not with the payload.
     expect(requestedUrls.first, Endpoints.urlAllCats);
 
     final imageRequests = requestedUrls
@@ -97,16 +106,22 @@ void main() {
         .length;
     final builtCards = find.byType(CardCatWidget).evaluate().length;
 
+    // Phase 8 relaxed this from an exact `imageRequests == builtCards`. That
+    // equality was not the invariant it looked like: `ListView` has a 250 px
+    // `cacheExtent`, so it builds a card or two past the viewport, and those
+    // cards resolve their image and can then be recycled. "Currently built" is a
+    // lower bound on "ever built", and the two coincided only because the old
+    // 800x600 surface happened to make them.
     expect(
       imageRequests,
-      builtCards,
-      reason: 'one image request per built card, and not one more',
+      greaterThanOrEqualTo(builtCards),
+      reason: 'every card on screen resolved its own image',
     );
     expect(
       imageRequests,
-      lessThan(3),
+      lessThan(10),
       reason:
-          'fewer requests than breeds in the payload — the point of the fix',
+          '67 breeds in the payload, a handful of requests — the point of the fix',
     );
 
     await tester.tap(find.text('More...').first);
@@ -138,7 +153,6 @@ void main() {
     // in `LandingPage.initState` (so re-mounting the page on the way back does not
     // refetch), and `getBreedById` resolves against the repository's cache (so
     // opening the detail does not either). Either one regressing makes this 2 or 3.
-    ignoreOverflowErrors();
 
     final requestedUrls = await bootApp(tester);
     await tester.pump(const Duration(seconds: 5));
@@ -168,7 +182,6 @@ void main() {
     // `themeMode` comes from the cubit, and the cubit hydrates to
     // `ThemeMode.system` from an empty box. Any one of them missing turns this
     // light.
-    ignoreOverflowErrors();
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
@@ -191,7 +204,6 @@ void main() {
   ) async {
     // The control. Without it the test above passes against an app hardcoded to
     // `AppTheme.dark()`, which is the same bug in the other direction.
-    ignoreOverflowErrors();
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
@@ -209,7 +221,6 @@ void main() {
     // The cache surviving a process restart, which is the only place the whole
     // chain is exercised: repository -> local data source -> KeyValueStore ->
     // Storage, with the container wiring them.
-    ignoreOverflowErrors();
     final storage = InMemoryStorage();
 
     await bootApp(tester, storage: storage);

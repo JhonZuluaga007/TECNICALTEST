@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/my_app_scaffold.dart';
+import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/bloc/detail_cat_cubit.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/widgets/list_characteristics_catbreeds_widget.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
@@ -67,7 +67,7 @@ class _DetailCatViewState extends State<_DetailCatView> {
     return BlocBuilder<DetailCatCubit, DetailCatState>(
       builder: (context, state) {
         return MyAppScaffold(
-          paddingColumn: EdgeInsets.symmetric(horizontal: 15.w),
+          paddingColumn: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           appBar: AppBar(
@@ -114,7 +114,7 @@ class _DetailCatViewState extends State<_DetailCatView> {
       children: [
         Center(
           child: BreedImage(
-            height: (MediaQuery.of(context).size.height / 2).h,
+            height: MediaQuery.sizeOf(context).height / 2,
             referenceImageId: breed.referenceImageId,
           ),
         ),
@@ -123,41 +123,51 @@ class _DetailCatViewState extends State<_DetailCatView> {
             controller: scrollController,
             child: SingleChildScrollView(
               controller: scrollController,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Phase 7 maps these three to `bodyLarge` rather than to the
-                  // `titleLarge` their old 20 px would suggest: they are body
-                  // copy, and a role carries meaning, not just a size.
-                  Text(breed.description, style: theme.textTheme.bodyLarge),
-                  SizedBox(height: 8.h),
-                  Text(
-                    l10n.countryLabel(breed.origin),
-                    textAlign: TextAlign.start,
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    l10n.lifeSpanLabel(breed.lifeSpan),
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                  SizedBox(height: 8.h),
-                  ListCharacteristicsCatbreeds(
-                    characteristics: [
-                      (
-                        label: l10n.intelligenceLabel,
-                        value: breed.intelligence,
+              // Phase 8. The description is the longest text in the app, and a
+              // full-window line on a 1440 px desktop is unreadable — the eye
+              // loses the start of the next line. Typographic measure, not a
+              // breakpoint: it kicks in wherever the window happens to be wider
+              // than a comfortable line, which is why it needs no `WindowSize`.
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Phase 7 maps these three to `bodyLarge` rather than to the
+                      // `titleLarge` their old 20 px would suggest: they are body
+                      // copy, and a role carries meaning, not just a size.
+                      Text(breed.description, style: theme.textTheme.bodyLarge),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        l10n.countryLabel(breed.origin),
+                        textAlign: TextAlign.start,
+                        style: theme.textTheme.bodyLarge,
                       ),
-                      (
-                        label: l10n.adaptabilityLabel,
-                        value: breed.adaptability,
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        l10n.lifeSpanLabel(breed.lifeSpan),
+                        style: theme.textTheme.bodyLarge,
                       ),
+                      const SizedBox(height: AppSpacing.sm),
+                      ListCharacteristicsCatbreeds(
+                        characteristics: [
+                          (
+                            label: l10n.intelligenceLabel,
+                            value: breed.intelligence,
+                          ),
+                          (
+                            label: l10n.adaptabilityLabel,
+                            value: breed.adaptability,
+                          ),
+                        ],
+                        labelStyle: theme.textTheme.titleLarge,
+                        radius: 12,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
                     ],
-                    labelStyle: theme.textTheme.titleLarge,
-                    radius: 12,
                   ),
-                  SizedBox(height: 8.h),
-                ],
+                ),
               ),
             ),
           ),

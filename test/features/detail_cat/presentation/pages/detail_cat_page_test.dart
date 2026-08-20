@@ -13,6 +13,7 @@ import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/
 import '../../../../helpers/builders.dart';
 import '../../../../helpers/mocks.dart';
 import '../../../../helpers/pump_app.dart';
+import '../../../../helpers/window_size.dart';
 
 void main() {
   late MockGetBreedByIdUseCase useCase;
@@ -42,10 +43,14 @@ void main() {
   /// handed a fully-built `CatBreedEntity` through the route, so it had nothing to
   /// load and nothing that could fail; it now receives an id and resolves it. The
   /// assertions below are unchanged — what changed is that they need a pump.
-  Future<void> pumpDetail(WidgetTester tester) async {
+  Future<void> pumpDetail(
+    WidgetTester tester, {
+    Size windowSize = phone,
+  }) async {
     await tester.pumpAppWith(
       const DetailCatPage(breedId: 'abys'),
       breedByIdUseCase: useCase,
+      windowSize: windowSize,
     );
     await tester.pumpAndSettle();
   }
@@ -112,6 +117,46 @@ void main() {
       await pumpDetail(tester);
 
       verify(() => useCase('abys')).called(1);
+    });
+  });
+
+  group('DetailCatPage measure', () {
+    // A description long enough to wrap, so the `Text` fills the width it is
+    // given instead of sizing to its own content — which is what makes its
+    // rendered width a measurement of the constraint above it.
+    final wordy = catBreedEntity(
+      id: 'abys',
+      name: 'Abyssinian',
+      description: List.filled(60, 'graceful').join(' '),
+    );
+
+    setUp(() => when(() => useCase('abys')).thenAnswer((_) async => Ok(wordy)));
+
+    double descriptionWidth(WidgetTester tester) =>
+        tester.getSize(find.text(wordy.description)).width;
+
+    // Phase 8. The description is the longest text in the app; left to fill a
+    // 1440 px window it becomes a line the eye cannot track back from. The cap is
+    // typographic rather than a breakpoint, so it is asserted as a width and not
+    // as a `WindowSize`.
+    testWidgets('the description fills a phone edge to edge', (tester) async {
+      await pumpDetail(tester, windowSize: phone);
+
+      // 390 minus the screen's 16 px horizontal padding on each side.
+      expect(descriptionWidth(tester), closeTo(390 - 32, 1));
+    });
+
+    testWidgets('the description stops widening on a desktop window', (
+      tester,
+    ) async {
+      await pumpDetail(tester, windowSize: desktop);
+
+      expect(descriptionWidth(tester), lessThanOrEqualTo(720));
+      expect(
+        descriptionWidth(tester),
+        greaterThan(600),
+        reason: 'capped, not collapsed to the phone width',
+      );
     });
   });
 
