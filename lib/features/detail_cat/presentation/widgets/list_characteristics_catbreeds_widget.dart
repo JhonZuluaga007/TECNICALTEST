@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-
 import 'package:tecnical_test_pragma/core/common_widgets/breed_characteristic_widget.dart';
+import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
 
 /// A single breed characteristic: its label and its value.
 typedef BreedCharacteristic = ({String label, int value});
@@ -32,19 +31,22 @@ class ListCharacteristicsCatbreeds extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final characteristic in characteristics)
           Column(
             children: [
+              // Phase 8: the `width: 500.w` that used to be here was wider than
+              // any window the app runs in, so it was "as wide as possible"
+              // spelled as a number that happened to be big enough. Stretching
+              // says it, and stops saying it wrong on a 1440 px desktop window.
               BreedCharacteristicWidget(
-                width: 500.w,
-                height: 30,
                 radius: radius ?? 10,
                 labelStyle: labelStyle ?? Theme.of(context).textTheme.bodyLarge,
                 nameCharacteristic: characteristic.label,
                 value: characteristic.value,
               ),
-              SizedBox(height: 8.h),
+              const SizedBox(height: AppSpacing.sm),
             ],
           ),
       ],

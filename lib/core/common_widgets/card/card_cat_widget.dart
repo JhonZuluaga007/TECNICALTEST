@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/breed_characteristic_widget.dart';
+import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
 import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 
 class CardCatWidget extends StatelessWidget {
@@ -41,13 +41,23 @@ class CardCatWidget extends StatelessWidget {
         side: BorderSide(color: theme.colorScheme.outline, width: 1),
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 15.h),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(nameCat, style: theme.textTheme.bodyLarge),
+                // `Expanded`, not a bare `Text`: Phase 8 measured this row
+                // overflowing at text scale 2.0 once the real font was loaded.
+                // The name is the flexible half — the action label is short and
+                // fixed, and a truncated button reads as broken.
+                Expanded(
+                  child: Text(
+                    nameCat,
+                    style: theme.textTheme.bodyLarge,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 TextButton(
                   // The `overlayColor` override is gone: it forced a light-grey
                   // ripple that would have stayed light grey on a dark surface,
@@ -59,17 +69,23 @@ class CardCatWidget extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: 5.h),
+            const SizedBox(height: AppSpacing.xs),
             image,
-            SizedBox(height: 5.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            const SizedBox(height: AppSpacing.sm),
+            // A `Wrap`, not a `Row`. Measured: at text scale 2.0 the origin plus
+            // the intelligence meter need more than the 358 px a 390 px-wide card
+            // has left after padding, which is exactly the 37 px overflow this
+            // phase set out to fix. `Wrap` moves the meter onto its own line
+            // instead of clipping it, with no breakpoint and no magic threshold —
+            // it reacts to the text size the user actually chose.
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.sm,
               children: [
-                Expanded(
-                  child: Text(countryOrigin, style: theme.textTheme.bodyLarge),
-                ),
+                Text(countryOrigin, style: theme.textTheme.bodyLarge),
                 BreedCharacteristicWidget(
-                  width: 190.w,
                   nameCharacteristic: l10n.intelligenceLabel,
                   value: intelligent,
                   radius: 10,

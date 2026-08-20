@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
+import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/search_cat_breeds_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_image.dart';
@@ -112,7 +112,7 @@ class SearchDelegateAllCatbreeds extends SearchDelegate<List<CatBreedEntity>?> {
         return ListView.builder(
           primary: false,
           itemCount: history.length,
-          padding: EdgeInsets.symmetric(horizontal: 12.w),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           itemBuilder: (context, index) {
             // No explicit style: `TextButton` renders its label as `labelLarge`.
             return TextButton(

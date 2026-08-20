@@ -5,34 +5,36 @@ description: How to write tests in this repo — the harness (flutter_test_confi
 
 # Testing
 
-258 tests, `test/` mirrors `lib/` exactly (`lib/a/b/c.dart` → `test/a/b/c_test.dart`).
+307 tests, `test/` mirrors `lib/` exactly (`lib/a/b/c.dart` → `test/a/b/c_test.dart`).
 Stack: `flutter_test` + `bloc_test` + `mocktail`, plus `MockClient` from
 `package:http/testing.dart` at the HTTP boundary.
 
-## The two zone traps — read this before anything else
+## The zone trap — read this before anything else
 
-Both have the same shape: `setUp` runs **outside** the `testWidgets` `FakeAsync` zone and
-**before** `testWidgets` installs its own error handler.
+`setUp` runs **outside** the `testWidgets` `FakeAsync` zone and **before** `testWidgets`
+installs its own error handler.
 
 1. **Build the bloc inside the `testWidgets` body, never in a `setUp`.** Use
    `tester.buildBloc(...)` from `test/helpers/pump_app.dart`. In a `setUp` the bloc's internal
    microtasks stay bound to the real zone, `pump`/`pumpAndSettle` never drain them, the state
    stays on `CatsLoading` and `pumpAndSettle` fails with *timed out*.
-2. **Call `ignoreOverflowErrors()` inside the `testWidgets` body, never in a `setUp`** —
-   `testWidgets` replaces `FlutterError.onError` after the `setUp` callbacks run, so a
-   `setUp` placement filters nothing.
+2. **Any `FlutterError.onError` override goes in the `testWidgets` body too**, for the second
+   half of the same reason — `testWidgets` replaces that handler after the `setUp` callbacks
+   run. Phase 8 deleted `ignoreOverflowErrors()`, which documented this trap; the one place
+   that still overrides the handler is `card_cat_widget_test.dart`, which captures overflow
+   reports instead of silencing them.
 
 ## The harness
 
 | File | What it gives you |
 |---|---|
-| `test/flutter_test_config.dart` | Runs once **per test file**, discovered automatically. Disables `google_fonts` runtime fetching and configures `ScreenUtil` (without it any `.w`/`.h` throws `LateInitializationError`). |
-| `test/helpers/pump_app.dart` | `tester.buildBloc(useCase, {storage, fetchOnBuild})` (auto `addTearDown(bloc.close)`), `tester.pumpAppWith(widget, {bloc, imageUseCase, breedByIdUseCase})`, `tester.pumpRouter(...)` for navigation tests. Deliberately does **not** use `ScreenUtilInit`. |
+| `test/flutter_test_config.dart` | Runs once **per test file**, discovered automatically. Its one job: load the bundled Acme with a `FontLoader`. Without it every glyph is a full em square and layouts overflow for reasons that do not exist in the app. |
+| `test/helpers/pump_app.dart` | `tester.buildBloc(useCase, {storage, fetchOnBuild})` (auto `addTearDown(bloc.close)`), `tester.pumpAppWith(widget, {bloc, imageUseCase, breedByIdUseCase})`, `tester.pumpRouter(...)` for navigation tests. Both take a `windowSize`, defaulting to a **phone**. |
 | `test/helpers/mocks.dart` | `Mock*` (mocktail) for every boundary + hand-written `Fake*` use cases that record what was requested. |
 | `test/helpers/in_memory_key_value_store.dart` | `InMemoryKeyValueStore` (for the local datasource) and `InMemoryStorage` (for a bloc constructor or `Injector.setup`, exposes `closed`). |
 | `test/helpers/builders.dart` | `catBreedModel(...)` / entity builders with every field defaulted — override only what the test is about. |
 | `test/helpers/fixture_reader.dart` | `fixture('breeds_3.json')` and `jsonResponse(body, [status])` — the latter sets `content-type: application/json; charset=utf-8`, **required** because `http.Response` defaults to latin1. |
-| `test/helpers/ignore_overflow_errors.dart` | Opt-in silencing of `RenderFlex overflowed` only. |
+| `test/helpers/window_size.dart` | `setWindowSize(tester, size)` plus `phone` / `tabletPortrait` / `tabletLandscape` / `desktop`. **`flutter_test` defaults to 800x600, which is `WindowSize.medium`** — leave it alone and the whole suite exercises the grid, never the one-column list a phone shows. |
 
 ## Which double at which seam
 
@@ -121,3 +123,16 @@ are simply absent from `lcov.info`. Report it honestly. The awk one-liners are i
 - [ ] Request **counts** asserted where caching or N+1 behavior matters
 - [ ] Each new guard mutation-verified
 - [ ] `fvm flutter analyze` clean, `fvm dart format .` no diff
+
+## Goldens
+
+`test/**/goldens/*.png`, next to the test that produces them. Only possible since Phase 7
+bundled Acme — `flutter_test` has no font loader of its own, so before that a golden pinned
+empty boxes rather than type.
+
+```bash
+fvm flutter test --update-goldens test/features/landing_cats/presentation/pages/landing_page_golden_test.dart
+```
+
+Regenerate deliberately, never to make a red test go green: read the diff triplet under
+`test/**/failures/` (gitignored since Phase 0) and decide whether the change was intended.

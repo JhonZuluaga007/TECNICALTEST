@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Catbreeds — a Flutter app over [TheCatAPI](https://thecatapi.com), clean architecture per
-feature, under a **phased modernization** (Phases 0–6 merged, 7–9 pending). Every phase is
+feature, under a **phased modernization** (Phases 0–8 merged, 9 pending). Every phase is
 compilable, testable and reviewable on its own.
 
 `README.md` is the 700-line historical record: the roadmap, and a changelog per phase
@@ -40,7 +40,7 @@ behind something you are about to change.
 | Install deps | `fvm flutter pub get` |
 | Analyze | `fvm flutter analyze` — must report **no issues** |
 | Format | `fvm dart format .` — must produce **no diff** |
-| Test | `fvm flutter test` — **258 tests**, all green |
+| Test | `fvm flutter test` — **307 tests**, all green |
 | One subtree | `fvm flutter test test/features/landing_cats/data` |
 | One case | `fvm flutter test --plain-name "exactly 1 request"` |
 | Codegen | `fvm dart run build_runner build --delete-conflicting-outputs` |
@@ -59,7 +59,8 @@ anonymously. A missing key is never the cause of an error screen.
 lib/
 ├── core/
 │   ├── common_widgets/     # Reusable widgets (card, text, network image)
-│   ├── config/             # endpoints · theme · responsive
+│   ├── config/             # endpoints
+│   ├── design_system/      # colors · theme · tokens · spacing · breakpoints
 │   ├── errors/             # sealed class CatsFailure (freezed)
 │   ├── injector/           # get_it + injectable — the ONLY file in lib/ importing get_it
 │   ├── storage/            # KeyValueStore interface + hydrated_bloc impl
@@ -87,6 +88,7 @@ lib/
 |---|---|---|
 | `sealed class CatsResult<T>` = `Ok` \| `Err` | `core/utils/` | The only success/failure channel. **No `Either`.** It defines no `==` on purpose — assert on the variant, then on the contents. |
 | `sealed class CatsFailure` | `core/errors/` | `network` · `timeout` · `server(statusCode)` · `unexpectedResponse` · `notFound(id)` · `unknown`. Adding a variant intentionally breaks every `switch` — fix each one, never add a `default`/`_`. |
+| `enum WindowSize` = `compact`\|`medium`\|`expanded`\|`large` | `core/design_system/` | Material 3 breakpoints (600/840/1200). `columns` drives the landing list-vs-grid split. Hand-rolled: the SDK ships no such API. |
 | `sealed class LandingCatsState` | `landing_cats/presentation/bloc/` | `initial` · `loading` · `loaded` · `stale` · `error`. `searchHistory` lives on **every** variant and must be carried through **every** `emit` — dropping it in one branch wipes the feature silently. |
 | `BreedsSnapshot` = `FreshBreeds` \| `StaleBreeds` | `landing_cats/domain/entities/` | An `Ok(StaleBreeds)` carries a failure: the call produced usable data, the failure describes its *freshness*. |
 
@@ -174,6 +176,11 @@ Each belongs to a pending phase; touching it early makes a diff unreviewable.
 
 | Thing | Owner |
 |---|---|
-| Hardcoded strings, no `ThemeData`/dark mode/l10n, `google_fonts` at runtime, `"LigthGreen"`/`"LigthGrey"` typos in `AppCatsColor` | Phase 7 |
-| `flutter_screenutil` and `ScreenUtil.init` inside `build`; `ignoreOverflowErrors()` in tests (a test-font metrics artifact, **not** a layout bug) | Phase 8 |
 | `analysis_options.yaml` is a bare `include:`; no CI; no coverage gate; no stale-codegen check in CI | Phase 9 |
+| `BreedImage` and the status views still live under `features/landing_cats/`, imported by the detail screen | Phase 9 |
+
+Gone as of Phase 8: `flutter_screenutil`, `ScreenUtil.init` inside `build`, `AppCatsResponsiveApp`,
+`core/config/helpers/responsive/`, and `ignoreOverflowErrors()` with all 23 of its call sites.
+Layout now reads `WindowSize` (`core/design_system/breakpoints.dart`) and spacing comes from
+`AppSpacing`. **Golden tests exist** (`test/**/goldens/`); regenerate with
+`fvm flutter test --update-goldens <file>`, never by deleting the PNG.

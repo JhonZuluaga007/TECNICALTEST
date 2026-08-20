@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
+import 'package:tecnical_test_pragma/core/design_system/breakpoints.dart';
+import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
 import 'package:tecnical_test_pragma/core/common_widgets/my_app_scaffold.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
 import 'package:tecnical_test_pragma/features/settings/presentation/bloc/theme_mode_cubit.dart';
@@ -66,7 +67,7 @@ class _LandingPageState extends State<LandingPage> {
         };
 
         return MyAppScaffold(
-          paddingColumn: EdgeInsets.symmetric(horizontal: 12.w),
+          paddingColumn: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           appBar: AppBar(
             automaticallyImplyLeading: false,
             shape: RoundedRectangleBorder(
@@ -77,9 +78,13 @@ class _LandingPageState extends State<LandingPage> {
             title: Text(l10n.appTitle, style: theme.textTheme.titleLarge),
             actions: const [_ThemeModeButton()],
             bottom: PreferredSize(
-              preferredSize: Size(double.infinity, 40.h),
+              preferredSize: const Size(double.infinity, 48),
               child: Padding(
-                padding: EdgeInsets.only(left: 12.w, right: 12.w, bottom: 5.h),
+                padding: const EdgeInsets.only(
+                  left: AppSpacing.md,
+                  right: AppSpacing.md,
+                  bottom: AppSpacing.xs,
+                ),
                 child: Container(
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
@@ -90,7 +95,9 @@ class _LandingPageState extends State<LandingPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Padding(
-                    padding: EdgeInsets.only(left: 8.w, right: 8.w),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -99,7 +106,13 @@ class _LandingPageState extends State<LandingPage> {
                         // Regular weight, so it asked the engine to synthesize a
                         // thin face that does not exist. `fontStyle:
                         // FontStyle.normal` was the default spelled out.
-                        Text(l10n.searchHint, style: theme.textTheme.bodyLarge),
+                        Expanded(
+                          child: Text(
+                            l10n.searchHint,
+                            style: theme.textTheme.bodyLarge,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         IconButton(
                           onPressed: () {
                             showSearch(
@@ -119,7 +132,7 @@ class _LandingPageState extends State<LandingPage> {
             ),
           ),
           children: [
-            SizedBox(height: 12.h),
+            const SizedBox(height: AppSpacing.md),
             Expanded(
               // Phase 3: an exhaustive `switch` over the sealed state replaces
               // `state.formSubmissionStatusService is SubmissionSuccess ? list :
@@ -171,32 +184,41 @@ class _LandingPageState extends State<LandingPage> {
     List<CatBreedEntity> breeds, {
     Widget? banner,
   }) {
+    // Phase 8. One column is a `ListView`, more than one is a `GridView`, and the
+    // distinction is deliberate rather than a special case of the same widget: a
+    // one-column `GridView` still forces every tile to the same height, so a
+    // breed with a long name would leave a gap under every other card on a phone
+    // — the window size the app is used at most.
+    final columns = WindowSize.of(context).columns;
+
     final list = Scrollbar(
       controller: scrollController,
-      child: ListView.separated(
-        controller: scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: breeds.length,
-        itemBuilder: (context, index) {
-          final breed = breeds[index];
-          return CardCatWidget(
-            nameCat: breed.name,
-            // Phase 4: `imageUrlCat: breed.urlImage` — a URL the datasource had
-            // already resolved for all 65 breeds before this list existed. Now the
-            // card resolves its own, and only the ones `ListView` actually builds.
-            image: BreedImage(referenceImageId: breed.referenceImageId),
-            countryOrigin: breed.origin,
-            intelligent: breed.intelligence,
-            onPressed: () {
-              // Phase 6: the id, not the entity. Same destination, but this one
-              // survives being written down as a URL.
-              context.goNamed(detailPage, pathParameters: {'id': breed.id});
-            },
-          );
-        },
-        separatorBuilder: (BuildContext context, int index) =>
-            SizedBox(height: 12.h),
-      ),
+      child: columns == 1
+          ? ListView.separated(
+              controller: scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: breeds.length,
+              itemBuilder: (context, index) => _card(context, breeds[index]),
+              separatorBuilder: (BuildContext context, int index) =>
+                  const SizedBox(height: AppSpacing.md),
+            )
+          : GridView.builder(
+              controller: scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                mainAxisSpacing: AppSpacing.md,
+                crossAxisSpacing: AppSpacing.md,
+                // Not `childAspectRatio`, which is a ratio of the *tile* and
+                // therefore turns any text growth into an overflow. A fixed
+                // extent lets the card keep its natural height as the column
+                // gets narrower, and 420 is what a card measures with the
+                // image slot at text scale 1.0.
+                mainAxisExtent: 420,
+              ),
+              itemCount: breeds.length,
+              itemBuilder: (context, index) => _card(context, breeds[index]),
+            ),
     );
 
     if (banner == null) return list;
@@ -204,11 +226,27 @@ class _LandingPageState extends State<LandingPage> {
     return Column(
       children: [
         banner,
-        SizedBox(height: 12.h),
+        const SizedBox(height: AppSpacing.md),
         Expanded(child: list),
       ],
     );
   }
+
+  /// One breed card, shared by the list and the grid.
+  Widget _card(BuildContext context, CatBreedEntity breed) => CardCatWidget(
+    nameCat: breed.name,
+    // Phase 4: `imageUrlCat: breed.urlImage` — a URL the datasource had already
+    // resolved for all 65 breeds before this list existed. Now the card resolves
+    // its own, and only the ones the viewport actually builds.
+    image: BreedImage(referenceImageId: breed.referenceImageId),
+    countryOrigin: breed.origin,
+    intelligent: breed.intelligence,
+    onPressed: () {
+      // Phase 6: the id, not the entity. Same destination, but this one survives
+      // being written down as a URL.
+      context.goNamed(detailPage, pathParameters: {'id': breed.id});
+    },
+  );
 }
 
 /// The only affordance for the theme, deliberately one button rather than a

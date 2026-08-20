@@ -14,9 +14,9 @@ import 'package:tecnical_test_pragma/features/landing_cats/presentation/pages/la
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/landing_status_views.dart';
 
 import '../../../../helpers/builders.dart';
-import '../../../../helpers/ignore_overflow_errors.dart';
 import '../../../../helpers/mocks.dart';
 import '../../../../helpers/pump_app.dart';
+import '../../../../helpers/window_size.dart';
 
 void main() {
   late MockGetAllCatsUseCase useCase;
@@ -56,17 +56,18 @@ void main() {
   /// whole list; it now happens once, where `main.dart` builds the bloc. Tests say
   /// so explicitly, which is both closer to what the app does and harder to
   /// misread than a side effect of mounting.
-  Future<void> pumpLoaded(WidgetTester tester) => tester.pumpAppWith(
-    const LandingPage(),
-    bloc: tester.buildBloc(useCase, fetchOnBuild: true),
-  );
+  Future<void> pumpLoaded(WidgetTester tester, {Size windowSize = phone}) =>
+      tester.pumpAppWith(
+        const LandingPage(),
+        bloc: tester.buildBloc(useCase, fetchOnBuild: true),
+        windowSize: windowSize,
+      );
 
   group('LandingPage', () {
     testWidgets('does NOT fetch on its own when mounted', (tester) async {
       // The inverse of the test this replaces ('dispatches AllCatsEvent on
       // mount'). Re-adding the `initState` dispatch fails here, which is what
       // pins Phase 6's fix — every back navigation used to cost a request.
-      ignoreOverflowErrors();
       stubSuccess();
 
       // Deliberately NOT `pumpLoaded`: the whole point is a bloc that was never
@@ -88,7 +89,6 @@ void main() {
     testWidgets('re-mounting the page does not refetch', (tester) async {
       // The bug itself, at the level where it happened: the same bloc, the page
       // mounted twice, exactly one request. Before Phase 6 this was two.
-      ignoreOverflowErrors();
       stubSuccess();
       final bloc = tester.buildBloc(useCase, fetchOnBuild: true);
 
@@ -106,29 +106,94 @@ void main() {
     });
 
     testWidgets('renders one card per breed', (tester) async {
-      // `CardCatWidget` overflows with the test font (every glyph is a full
-      // em), not in the real app. See the helper.
-      ignoreOverflowErrors();
       final breeds = stubSuccess();
 
       await pumpLoaded(tester);
       await tester.pumpAndSettle();
 
-      // The `itemCount` is asserted rather than the number of rendered cards:
-      // `ListView` is lazy and only 2 cards fit in the test surface (800x600).
-      // Counting built widgets would tie the test to the viewport size, which is
-      // exactly what Phase 8 is going to change.
+      // The `semanticChildCount` is asserted rather than the number of rendered
+      // cards: the list is lazy, and only some of them fit on screen. Counting
+      // built widgets would tie the test to the viewport size.
       //
-      // Filtered by orientation: every `CardCatWidget` nests a horizontal
-      // `ListView` (the 5 circles in `BreedCharacteristicWidget`), so
-      // `find.byType(ListView)` matches several. The vertical one is the
-      // landing's.
-      final verticalLists = tester
-          .widgetList<ListView>(find.byType(ListView))
-          .where((list) => list.scrollDirection == Axis.vertical);
-      expect(verticalLists.single.semanticChildCount, 3);
+      // Phase 8 simplified this in two ways. The pump defaults to a phone, so
+      // this is the one-column `ListView` branch and there is exactly one list to
+      // find. And the filter by `scrollDirection` that used to be needed here is
+      // gone with the horizontal `ListView` that `BreedCharacteristicWidget`
+      // nested inside every card — five dots that always fit did not need a
+      // scrollable, and it cost a `ScrollPosition` per card.
+      final list = tester.widget<ListView>(find.byType(ListView));
+      expect(list.scrollDirection, Axis.vertical);
+      expect(list.semanticChildCount, 3);
       expect(find.byType(CardCatWidget), findsWidgets);
       expect(find.text(breeds.first.name), findsOneWidget);
+    });
+
+    // Phase 8. The landing screen is the only adaptive surface in the app, and
+    // these are the tests that say so. `pumpLoaded` defaults to a phone (see
+    // `window_size.dart`), so a test that wants the grid asks for the window.
+    group('adapts to the window', () {
+      testWidgets('a phone renders a one-column ListView, not a grid', (
+        tester,
+      ) async {
+        stubSuccess();
+
+        await pumpLoaded(tester, windowSize: phone);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(GridView), findsNothing);
+        expect(
+          tester.widget<ListView>(find.byType(ListView)).semanticChildCount,
+          3,
+        );
+      });
+
+      for (final (window, columns) in <(Size, int)>[
+        (tabletPortrait, 2),
+        (tabletLandscape, 3),
+        (desktop, 4),
+      ]) {
+        testWidgets('a ${window.width.toInt()} px window lays out $columns '
+            'columns', (tester) async {
+          stubSuccess();
+
+          await pumpLoaded(tester, windowSize: window);
+          await tester.pumpAndSettle();
+
+          expect(find.byType(ListView), findsNothing);
+          final grid = tester.widget<GridView>(find.byType(GridView));
+          final delegate =
+              grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+
+          expect(delegate.crossAxisCount, columns);
+          // Found by mutation. `landing_page.dart` first passed
+          // `semanticChildCount: breeds.length` explicitly, with a comment
+          // claiming `GridView.builder` does not infer it — deleting the
+          // argument left this test green, and the SDK says why:
+          // `scroll_view.dart:2067` is `semanticChildCount ?? itemCount`. The
+          // argument was redundant and the comment was wrong, so both are gone.
+          //
+          // The assertion stays, retargeted: it no longer guards an explicit
+          // argument, it guards that the grid was handed all three breeds
+          // rather than a truncated list.
+          expect(grid.semanticChildCount, 3);
+        });
+      }
+
+      testWidgets('resizing from a phone to a desktop swaps list for grid', (
+        tester,
+      ) async {
+        stubSuccess();
+
+        await pumpLoaded(tester, windowSize: phone);
+        await tester.pumpAndSettle();
+        expect(find.byType(ListView), findsOneWidget);
+
+        setWindowSize(tester, desktop);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ListView), findsNothing);
+        expect(find.byType(GridView), findsOneWidget);
+      });
     });
 
     testWidgets('shows the loading view while the request is in flight', (
@@ -223,7 +288,6 @@ void main() {
     testWidgets('a successful retry replaces the error view with the list', (
       tester,
     ) async {
-      ignoreOverflowErrors();
       stubFailure();
 
       await pumpLoaded(tester);
@@ -264,7 +328,6 @@ void main() {
     testWidgets('unmounting it disposes the ScrollController', (tester) async {
       // `CardCatWidget` overflows with the test font (every glyph is a full
       // em), not in the real app. See the helper.
-      ignoreOverflowErrors();
       stubSuccess();
 
       await pumpLoaded(tester);
@@ -284,7 +347,6 @@ void main() {
     ) async {
       // `CardCatWidget` overflows with the test font (every glyph is a full
       // em), not in the real app. See the helper.
-      ignoreOverflowErrors();
       final breeds = stubSuccess();
 
       await tester.pumpRouter(
@@ -365,7 +427,6 @@ void main() {
     ) async {
       // Phase 6's whole point, at the UI. The same `NetworkFailure` that renders
       // `CatsErrorView` with no cache renders the full list here.
-      ignoreOverflowErrors();
       stubStale();
 
       await pumpLoaded(tester);
@@ -378,7 +439,6 @@ void main() {
     });
 
     testWidgets('the banner explains why the list is old', (tester) async {
-      ignoreOverflowErrors();
       stubStale(const ServerFailure(statusCode: 503));
 
       await pumpLoaded(tester);
@@ -390,7 +450,6 @@ void main() {
     });
 
     testWidgets('Refresh re-dispatches the fetch', (tester) async {
-      ignoreOverflowErrors();
       stubStale();
 
       await pumpLoaded(tester);
@@ -406,7 +465,6 @@ void main() {
       // The regression this guards: the app bar picks the breeds off the state,
       // and leaving `CatsStale` out of that pattern would show a full list with
       // an empty search — a silent failure, since nothing would throw.
-      ignoreOverflowErrors();
       stubStale();
 
       await pumpLoaded(tester);

@@ -12,6 +12,7 @@ import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 import 'package:tecnical_test_pragma/routers/app_route.dart';
 
 import 'in_memory_key_value_store.dart';
+import 'window_size.dart' as window;
 import 'mocks.dart';
 
 extension PumpApp on WidgetTester {
@@ -103,11 +104,14 @@ extension PumpApp on WidgetTester {
 
   /// Mounts [child] inside a bare `MaterialApp`.
   ///
-  /// Deliberately does NOT use `ScreenUtilInit`: `ScreenUtil` is already
-  /// configured globally in `flutter_test_config.dart`, and `ScreenUtilInit`'s
-  /// two-phase startup (it returns `SizedBox.shrink()` until a
-  /// `didChangeDependencies` and a `FutureBuilder` both resolve) would only
-  /// complicate every pump.
+  /// Phase 8: this used to carry a paragraph explaining why it deliberately
+  /// avoided `ScreenUtilInit` and its two-phase startup. The package is gone, so
+  /// there is nothing left to avoid — a `MaterialApp` renders on the first pump.
+  ///
+  /// [windowSize] defaults to a **phone**, not to `flutter_test`'s 800x600. That
+  /// default is a `WindowSize.medium` window, so leaving it alone would have
+  /// pointed the whole suite at the two-column grid and left the one-column list
+  /// — what a phone shows — untested. See `window_size.dart`.
   Future<void> pumpAppWith(
     Widget child, {
     LandingCatsBloc? bloc,
@@ -115,7 +119,10 @@ extension PumpApp on WidgetTester {
     GetBreedByIdUseCase? breedByIdUseCase,
     Locale locale = const Locale('en'),
     ThemeMode? themeMode,
+    Size windowSize = window.phone,
   }) {
+    window.setWindowSize(this, windowSize);
+
     Widget wrap(Widget inner) => _withUseCases(
       inner,
       imageUseCase: imageUseCase,
@@ -140,7 +147,9 @@ extension PumpApp on WidgetTester {
     GetBreedImageUseCase? imageUseCase,
     GetBreedByIdUseCase? breedByIdUseCase,
     Locale locale = const Locale('en'),
+    Size windowSize = window.phone,
   }) {
+    window.setWindowSize(this, windowSize);
     final router = AppRoute.router(initialLocation: initialLocation);
     addTearDown(router.dispose);
 
