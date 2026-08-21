@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
+import 'package:tecnical_test_pragma/core/common_widgets/app_scaffold.dart';
+import 'package:tecnical_test_pragma/core/common_widgets/status_views.dart';
 import 'package:tecnical_test_pragma/core/design_system/breakpoints.dart';
+import 'package:tecnical_test_pragma/core/design_system/radii.dart';
 import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/my_app_scaffold.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
-import 'package:tecnical_test_pragma/features/settings/presentation/bloc/theme_mode_cubit.dart';
-import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
-import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_image.dart';
-import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/landing_status_views.dart';
-import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/search_delegate_all_catbreeds.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_card.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_image.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/search_delegate_all_catbreeds.dart';
+import 'package:tecnical_test_pragma/features/settings/presentation/widgets/theme_mode_button.dart';
+import 'package:go_router/go_router.dart';
+import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 import 'package:tecnical_test_pragma/routers/routers.dart';
 
 class LandingPage extends StatefulWidget {
@@ -66,17 +67,17 @@ class _LandingPageState extends State<LandingPage> {
           _ => const <CatBreedEntity>[],
         };
 
-        return MyAppScaffold(
+        return AppScaffold(
           paddingColumn: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           appBar: AppBar(
             automaticallyImplyLeading: false,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             // Phase 7: `backgroundColor` was pinned to white. An `AppBar` takes
             // `colorScheme.surface` from the theme, which follows the brightness.
             title: Text(l10n.appTitle, style: theme.textTheme.titleLarge),
-            actions: const [_ThemeModeButton()],
+            actions: const [ThemeModeButton()],
             bottom: PreferredSize(
               preferredSize: const Size(double.infinity, 48),
               child: Padding(
@@ -88,11 +89,10 @@ class _LandingPageState extends State<LandingPage> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
-                    border: Border.all(
-                      color: theme.colorScheme.outline,
-                      width: 1,
-                    ),
-                    borderRadius: BorderRadius.circular(8),
+                    // No `width: 1` — that is `Border.all`'s own default
+                    // (`box_border.dart:468`).
+                    border: Border.all(color: theme.colorScheme.outline),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -233,46 +233,18 @@ class _LandingPageState extends State<LandingPage> {
   }
 
   /// One breed card, shared by the list and the grid.
-  Widget _card(BuildContext context, CatBreedEntity breed) => CardCatWidget(
-    nameCat: breed.name,
+  Widget _card(BuildContext context, CatBreedEntity breed) => BreedCard(
+    name: breed.name,
     // Phase 4: `imageUrlCat: breed.urlImage` — a URL the datasource had already
     // resolved for all 65 breeds before this list existed. Now the card resolves
     // its own, and only the ones the viewport actually builds.
     image: BreedImage(referenceImageId: breed.referenceImageId),
-    countryOrigin: breed.origin,
-    intelligent: breed.intelligence,
+    origin: breed.origin,
+    intelligence: breed.intelligence,
     onPressed: () {
       // Phase 6: the id, not the entity. Same destination, but this one survives
       // being written down as a URL.
       context.goNamed(detailPage, pathParameters: {'id': breed.id});
     },
   );
-}
-
-/// The only affordance for the theme, deliberately one button rather than a
-/// settings screen.
-///
-/// Phase 7. Dark mode with no control is invisible to a user whose device is in
-/// light mode, which is most of them — and the roadmap does not have a settings
-/// screen on it.
-///
-/// Its own widget, and `const`, so cycling the theme rebuilds this icon rather
-/// than the whole page and its list.
-class _ThemeModeButton extends StatelessWidget {
-  const _ThemeModeButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<ThemeModeCubit, ThemeMode>(
-      builder: (context, mode) => IconButton(
-        tooltip: AppLocalizations.of(context).toggleTheme,
-        onPressed: context.read<ThemeModeCubit>().cycle,
-        icon: Icon(switch (mode) {
-          ThemeMode.system => Icons.brightness_auto_outlined,
-          ThemeMode.light => Icons.light_mode_outlined,
-          ThemeMode.dark => Icons.dark_mode_outlined,
-        }),
-      ),
-    );
-  }
 }

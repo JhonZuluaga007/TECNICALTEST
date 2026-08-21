@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_card.dart';
 import 'package:tecnical_test_pragma/core/config/helpers/endpoints.dart';
 import 'package:tecnical_test_pragma/core/design_system/cats_tokens.dart';
 import 'package:tecnical_test_pragma/core/injector/injector.dart';
@@ -85,7 +85,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(LandingPage), findsOneWidget);
-    expect(find.byType(CardCatWidget), findsWidgets);
+    expect(find.byType(BreedCard), findsWidgets);
     expect(find.text('Abyssinian'), findsOneWidget);
 
     // Phase 4's fix, end to end through the real DI graph, router, bloc and
@@ -104,7 +104,7 @@ void main() {
     final imageRequests = requestedUrls
         .where((url) => url.startsWith(Endpoints.urlForGetImageCat))
         .length;
-    final builtCards = find.byType(CardCatWidget).evaluate().length;
+    final builtCards = find.byType(BreedCard).evaluate().length;
 
     // Phase 8 relaxed this from an exact `imageRequests == builtCards`. That
     // equality was not the invariant it looked like: `ListView` has a 250 px

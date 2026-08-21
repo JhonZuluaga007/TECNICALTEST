@@ -26,7 +26,7 @@ value is that the caller never has to see raw tool output.
 fvm dart run build_runner build --delete-conflicting-outputs   # only if codegen inputs changed
 fvm dart format .            && git diff --stat                # must be no diff
 fvm flutter analyze                                            # must be no issues
-fvm flutter test                                               # 258 tests, all green
+fvm flutter test                                               # 331 tests, all green
 git diff --exit-code -- '*.freezed.dart' '*.g.dart' '*.config.dart'
 ```
 

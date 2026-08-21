@@ -1,3 +1,6 @@
+@Tags(['golden'])
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -17,6 +20,13 @@ import '../../../../helpers/window_size.dart';
 /// own, so before that every glyph rendered as an empty box and a golden would
 /// have pinned the box, not the type. `flutter_test_config.dart` loads the real
 /// font for every test file.
+///
+/// Phase 9 tagged this file `golden` so CI can run it on a macOS runner, the
+/// host these PNGs were generated on. Font rasterization differs between
+/// platforms, so the same tree can be pixel-correct here and one antialiased
+/// edge off on Linux — a failure that says nothing about the code. The tag is
+/// how the Linux job excludes it *and* how the macOS job selects it, so the file
+/// cannot end up skipped by both.
 ///
 /// Regenerate with:
 ///

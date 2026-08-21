@@ -1,0 +1,125 @@
+# The gate `CLAUDE.md` has described since Phase 0 and that has been run by hand
+# ever since. Phase 9 automated it.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch cancels the first: nothing here is worth
+# spending a runner on twice for a commit that has already been superseded.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The SDK is pinned in `.fvm/fvm_config.json`. fvm itself is a local tool for
+  # keeping a developer's `$PATH` honest; on a runner the version is chosen
+  # explicitly, so the pin is reproduced here rather than installing fvm to read
+  # a file this workflow can just as well name. Both must move together — if they
+  # disagree, CI is testing a different SDK than every developer.
+  FLUTTER_VERSION: 3.44.9
+
+jobs:
+  verify:
+    name: format · analyze · test · coverage · codegen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      # Run separately, never implicitly as part of `flutter test`: an implicit
+      # `pub get` writing to a redirected stdout has crashed with
+      # `FileSystemException: writeFrom failed` from `package:pub/src/log.dart`.
+      - run: flutter pub get
+
+      - name: Format
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: flutter analyze
+
+      # Goldens are excluded here and run on macOS below. The tag is declared in
+      # `dart_test.yaml`, and the two jobs use the same tag from opposite sides,
+      # so a file cannot fall through the gap between them.
+      - name: Test
+        run: flutter test --exclude-tags golden --coverage
+
+      - name: Coverage gate
+        run: |
+          awk -F',' '
+            /^DA:/ { total++; if ($2 > 0) covered++ }
+            END {
+              if (total == 0) { print "no coverage data"; exit 1 }
+              pct = covered * 100 / total
+              printf "%d/%d lines = %.1f%%\n", covered, total, pct
+              # A ratchet just below the measured figure (803/838 = 95.8% at
+              # Phase 9), not a round aspiration. Know what that buys: the margin
+              # is roughly **seven uncovered lines**. Adding more than that turns
+              # this red, which is the job — but it will be red for the person who
+              # adds the seventh line, not the one who left the first six.
+              #
+              # The honest caveat, unchanged since Phase 2: `--coverage` only
+              # instruments libraries the run actually loaded, so this is "of
+              # reached lines", not "of the project". A green gate is not evidence
+              # of project-wide coverage.
+              if (pct < 95.0) { print "below the 95.0% gate"; exit 1 }
+            }
+          ' coverage/lcov.info
+
+      # The check Phase 5 asked for by name, after a stale `injector.config.dart`
+      # failed the suite reporting a registration that was plainly present in the
+      # source. Generated files are committed on purpose (Phase 4) so a fresh
+      # clone builds without running the generator; this is the cost of that
+      # decision, and it is worth paying rather than reversing.
+      # `--delete-conflicting-outputs` is kept because it is the command
+      # `CLAUDE.md` documents and a developer runs; CI should reproduce that, not
+      # a variant of it. Measured in Phase 9: this build_runner prints
+      # `W These options have been removed and were ignored` and carries on. It is
+      # a warning today and dead config tomorrow — when it becomes an error, fix
+      # it here and in `CLAUDE.md` and the skills together, not just here.
+      - name: Generated files are not stale
+        run: |
+          dart run build_runner build --delete-conflicting-outputs
+          git diff --exit-code -- '*.freezed.dart' '*.g.dart' '*.config.dart'
+
+  goldens:
+    name: goldens (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # On macOS because that is the host the PNGs were generated on. Phase 8
+      # recorded their cross-platform stability as unverified, and font
+      # rasterization differs between platforms, so a Linux run would likely fail
+      # on an antialiased edge — a red build that says nothing about the code.
+      #
+      # If this job ever needs to move to Linux, regenerate the goldens there in
+      # the same commit. Never silence it by deleting a PNG.
+      - name: Goldens
+        run: flutter test --tags golden
+
+      # Without this the only evidence of a golden failure is a diff percentage
+      # in the log. `**/failures/` is gitignored precisely so these stay local;
+      # on a runner there is nowhere else for them to go.
+      - name: Upload golden diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-failures
+          path: "**/failures/"
+          if-no-files-found: ignore

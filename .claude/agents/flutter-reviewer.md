@@ -27,7 +27,7 @@ diff touches them, `/flutter-codegen` / `/flutter-widgets`.
 - Any new `default:` or `_ =>` in a switch that *chooses a branch of behavior or UI*? (A `_`
   is acceptable only when extracting a value with an obvious fallback.)
 - New `CatsFailure` variant — is every consumer updated, including `isRetryable` in
-  `core/utils/retry.dart` and `messageFor` in `landing_status_views.dart`?
+  `core/utils/retry.dart` and `messageFor` in `core/common_widgets/status_views.dart`?
 - New state variant — does `searchHistory` still flow through **every** `emit` branch?
 - Does the repository still catch everything and return a `CatsResult`? No raw exception may
   escape `data/`.

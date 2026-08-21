@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/my_app_scaffold.dart';
+import 'package:tecnical_test_pragma/core/common_widgets/app_scaffold.dart';
+import 'package:tecnical_test_pragma/core/common_widgets/status_views.dart';
 import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/bloc/detail_cat_cubit.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/widgets/list_characteristics_catbreeds_widget.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/get_breed_by_id_use_case.dart';
 // The detail screen already depends on the landing feature for the entity it
-// shows; `BreedImage` and the status views follow the same dependency. Phase 9
-// promotes them to `core/common_widgets/` if a third consumer shows up.
+// shows, and `BreedImage` follows the same dependency. It stays there
+// permanently: Phase 9 went to promote it to `core/common_widgets/` — which four
+// documents had promised — and found the promotion impossible. `BreedImage`
+// needs `GetBreedImageUseCase` and `BreedImageCubit`, both landing-owned, so
+// moving it would make `core/` import a feature and invert the one-way
+// dependency rule. Dragging a domain use case into `core/` to make the import
+// legal would be worse than the import. The status views, which depended on
+// nothing feature-owned, did move.
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_image.dart';
-import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/landing_status_views.dart';
 import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 
 /// The breed detail screen.
@@ -66,7 +72,7 @@ class _DetailCatViewState extends State<_DetailCatView> {
 
     return BlocBuilder<DetailCatCubit, DetailCatState>(
       builder: (context, state) {
-        return MyAppScaffold(
+        return AppScaffold(
           paddingColumn: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,7 +168,7 @@ class _DetailCatViewState extends State<_DetailCatView> {
                           ),
                         ],
                         labelStyle: theme.textTheme.titleLarge,
-                        radius: 12,
+                        dotRadius: 12,
                       ),
                       const SizedBox(height: AppSpacing.sm),
                     ],

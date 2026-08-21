@@ -2,8 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tecnical_test_pragma/core/design_system/app_colors.dart';
 import 'package:tecnical_test_pragma/core/design_system/app_theme.dart';
 import 'package:tecnical_test_pragma/core/design_system/cats_tokens.dart';
+import 'package:tecnical_test_pragma/core/design_system/radii.dart';
 
 /// WCAG 2.1 relative-contrast ratio between two opaque colours.
 ///
@@ -78,6 +80,49 @@ void main() {
         greaterThanOrEqualTo(4.5),
         reason: 'WCAG AA for normal-sized text',
       );
+    });
+  });
+
+  group('AppTheme card chrome', () {
+    /// The `BorderSide` a theme's `cardTheme` paints.
+    BorderSide sideOf(ThemeData theme) =>
+        (theme.cardTheme.shape! as RoundedRectangleBorder).side;
+
+    test('both themes configure a card theme', () {
+      // Phase 9 moved this chrome out of the breed card and into the theme. If
+      // it is absent, every `Card` silently falls back to the M3 default — no
+      // outline at all — which is a visual regression no widget test asserts on
+      // directly.
+      for (final theme in [AppTheme.light(), AppTheme.dark()]) {
+        expect(theme.cardTheme.elevation, 2);
+        expect(theme.cardTheme.shape, isA<RoundedRectangleBorder>());
+      }
+    });
+
+    test('the card corner comes from the radius scale', () {
+      expect(
+        (AppTheme.light().cardTheme.shape! as RoundedRectangleBorder)
+            .borderRadius,
+        BorderRadius.circular(AppRadius.md),
+      );
+    });
+
+    test('each theme outlines its card with its own scheme', () {
+      // The available mistake is the same one the token tests guard against:
+      // building the dark `cardTheme` from `lightScheme` compiles, looks fine in
+      // isolation, and draws a light-grey outline on a dark surface.
+      expect(sideOf(AppTheme.light()).color, lightScheme.outline);
+      expect(sideOf(AppTheme.dark()).color, darkScheme.outline);
+      expect(
+        sideOf(AppTheme.dark()).color,
+        isNot(sideOf(AppTheme.light()).color),
+      );
+    });
+
+    test('the card border keeps the SDK default width', () {
+      // Phase 9 deleted three explicit `width: 1`s. This pins that the deletion
+      // was a no-op rather than a change nobody noticed.
+      expect(sideOf(AppTheme.light()).width, 1.0);
     });
   });
 }

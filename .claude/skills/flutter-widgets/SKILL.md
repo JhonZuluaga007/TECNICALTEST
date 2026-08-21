@@ -1,6 +1,6 @@
 ---
 name: flutter-widgets
-description: Presentation-layer rules for this repo — disposal ownership, no side effects in build, rebuild scope with BlocBuilder/buildWhen, exhaustive state rendering, failure-to-copy mapping, image resolution per card, and the flutter_screenutil situation. Load BEFORE writing or editing anything under presentation/ or core/common_widgets/.
+description: Presentation-layer rules for this repo — disposal ownership, no side effects in build, rebuild scope with BlocBuilder/buildWhen, exhaustive state rendering, failure-to-copy mapping, image resolution per card, sizing and breakpoints, and where a widget belongs. Load BEFORE writing or editing anything under presentation/ or core/common_widgets/.
 ---
 
 # Widgets and presentation
@@ -82,7 +82,7 @@ isolation and match `find.byType(CatsErrorView)` instead of copy that Phase 7 wi
 ## Failure-to-copy mapping lives in presentation
 
 `CatsFailure.detail` is a **technical** description for tests and logging — never user-facing
-copy. The mapping is `messageFor` in `landing_status_views.dart`, and it uses guard clauses
+copy. The mapping is `messageFor` in `core/common_widgets/status_views.dart`, and it uses guard clauses
 where the status code changes the meaning:
 
 ```dart
@@ -126,6 +126,33 @@ The use cases a card needs come from the widget tree (`RepositoryProvider`), not
 to `TextScaler`: its purpose was to cancel two of the user's accessibility settings. Same for
 `alwaysUse24HourFormat: false`. If a layout breaks at large text, fix the layout.
 
+## Where a widget belongs
+
+**`core/common_widgets/` is for what more than one feature uses.** Nothing else. As of Phase 9
+it holds exactly three files — `app_scaffold.dart`, `rating_meter.dart`, `status_views.dart` —
+and that is the whole inventory.
+
+Before putting a widget there, check two things:
+
+1. **Does a second feature actually use it?** A widget in `core/` with one caller is misfiled,
+   not shared. And a widget that reaches for its own copy (`l10n.moreAction`) can never serve a
+   second caller — it belongs in the feature that owns that copy. `CardCatWidget` failed both
+   tests and became `BreedCard` inside `landing_cats`.
+2. **Read its import block.** If it needs a use case or a cubit, promotion to `core/` is
+   *illegal*, not just unwise: it inverts the one-way rule. `BreedImage` is the standing
+   example — four documents promised its promotion and all four were wrong.
+
+**Chrome and composition move in opposite directions.** What is shared about a card is its
+elevation, radius and border, and the reusable form of that in Flutter is a `ThemeData`
+sub-theme, not a widget with more parameters. Card chrome now lives in
+`AppTheme._build`'s `cardTheme` and **must not be put back on the widget**. Resist "making it
+reusable" by adding slots: an abstraction with one implementation is indirection with ceremony.
+
+A sub-theme earns its place when the widget it configures is actually used *and* call sites are
+overriding its defaults by hand. Only `Card` qualified — there is not one `TextField` or
+`FilledButton` in `lib/`, so `inputDecorationTheme` and `filledButtonTheme` would configure
+nothing.
+
 ## Sizing and breakpoints
 
 `flutter_screenutil` is **gone** (Phase 8). Do not reintroduce `.w`/`.h`/`.sp`, and do not add
@@ -143,6 +170,6 @@ a `MaterialApp.builder` that configures a global from inside `build`.
   to 720 px with a `ConstrainedBox`, because the reason is typographic and applies at whatever
   width it happens to be reached.
 - **Text scale is the user's setting, and layouts must survive it.** Measured in Phase 8:
-  `CardCatWidget` overflowed by 37 px at scale 2.0 on a phone. The fix was a `Wrap`, not a
+  `BreedCard` overflowed by 37 px at scale 2.0 on a phone. The fix was a `Wrap`, not a
   breakpoint — it reacts to the size the text actually took. New layouts get a test at
   1.0 / 1.5 / 2.0.

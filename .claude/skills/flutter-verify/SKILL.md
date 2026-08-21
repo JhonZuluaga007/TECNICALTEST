@@ -22,7 +22,7 @@ git diff --stat
 # 3. Static analysis — must report NO issues
 fvm flutter analyze
 
-# 4. The suite — 258 tests, all green
+# 4. The suite — 331 tests, all green
 fvm flutter test
 
 # 5. No generated file left behind
@@ -35,6 +35,15 @@ that do not exist).
 
 `fvm` is not optional. A bare `dart format` from a different SDK reformats files the pinned
 `dart_style` would leave alone, and the diff becomes unreviewable.
+
+**CI runs this same gate** (`.github/workflows/ci.yml`, Phase 9), so a local pass should mean a
+green build. Two differences worth knowing:
+
+- CI splits the suite by the `golden` tag: Linux runs `--exclude-tags golden` (327) and macOS
+  runs `--tags golden` (4). Locally `fvm flutter test` runs all 331. If you add a golden file,
+  tag it — an untagged golden runs on Linux and will fail there on font rasterization.
+- CI enforces a **coverage ratchet at 95.0%** and runs the stale-codegen check on every push.
+  Step 5 above is not optional politeness; it is a build failure.
 
 ## Reading the failure modes
 
@@ -65,7 +74,8 @@ awk -F: '/^SF:/{f=$2} /^LF:/{lf=$2} /^LH:/{lh=$2} /^end_of_record/{printf "%6.1f
 **State the caveat every time you quote the number.** `--coverage` only instruments libraries
 the run actually loaded, so it is "of reached lines", not "of the project" — declaration-only
 files (constants, barrels, abstract classes) are simply absent from `lcov.info`. Quoting it as
-project coverage overstates it. There is no coverage gate yet; Phase 9 owns that.
+project coverage overstates it — and CI's gate inherits that caveat, so a green gate is not
+evidence of project-wide coverage either.
 
 Exclude generated files from any judgement about coverage: `*.freezed.dart` and `*.g.dart`
 inflate both the numerator and the denominator and say nothing about the tests.

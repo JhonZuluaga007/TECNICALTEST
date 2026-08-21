@@ -1,0 +1,7 @@
+# Phase 9. Declaring the tag is what makes `--tags` / `--exclude-tags` a
+# supported selection rather than a warning, and it is also the list a reader
+# consults to find out that a subset of this suite runs somewhere else.
+tags:
+  golden:
+    # Pinned PNGs, valid only on the platform that generated them. CI runs these
+    # on macOS and excludes them from the Linux job. Locally they run by default.

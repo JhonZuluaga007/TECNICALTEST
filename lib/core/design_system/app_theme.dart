@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 import 'cats_tokens.dart';
+import 'radii.dart';
 
 /// The app's two themes.
 ///
@@ -30,5 +31,27 @@ abstract final class AppTheme {
     // on every screen.
     fontFamily: 'Acme',
     extensions: [tokens],
+    // Phase 9. This chrome used to live inside `CardCatWidget`, which meant a
+    // global visual decision was owned by one feature's widget and no other
+    // `Card` in the app inherited it. `Card` is a Material component whose
+    // appearance is *supposed* to come from the theme; the app was declining the
+    // contract the framework offers.
+    //
+    // `CardThemeData`, not `CardTheme` — the latter is the inherited widget, and
+    // `ThemeData.cardTheme` takes the data class (`theme_data.dart:1327`).
+    //
+    // **`margin` is deliberately unset.** `Card`'s own default is
+    // `EdgeInsets.all(4)`, and naming it here would be restating the SDK; leaving
+    // it is also what keeps this change pixel-identical to the call-site chrome
+    // it replaces.
+    cardTheme: CardThemeData(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        // No `width: 1` — that is `BorderSide`'s own default
+        // (`borders.dart:71`), so passing it says nothing.
+        side: BorderSide(color: scheme.outline),
+      ),
+    ),
   );
 }

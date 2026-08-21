@@ -39,7 +39,7 @@ sealed class CatsFailure with _$CatsFailure implements Exception {
   ///
   /// [detail] is a technical description, for tests and future logging. **Not**
   /// the copy shown to the user: that mapping lives in the presentation layer
-  /// (`landing_status_views.dart`).
+  /// (`status_views.dart`).
   const factory CatsFailure.unexpectedResponse({required String detail}) =
       UnexpectedResponseFailure;
 

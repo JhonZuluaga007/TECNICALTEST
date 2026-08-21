@@ -5,10 +5,10 @@ description: How a roadmap phase is executed end to end in this repo — scoping
 
 # Phase workflow
 
-The roadmap lives in `README.md` → *Project status / Roadmap*. Phases 0–6 are merged;
-**7 (design system, Material 3, dark mode, l10n)**, **8 (adaptive layout, drop
-`flutter_screenutil`, goldens)** and **9 (dedupe, CI, coverage gate, harden
-`analysis_options.yaml`)** are pending.
+The roadmap lives in `README.md` → *Project status / Roadmap*. **Phases 0–9 are all merged and
+the roadmap is complete.** This skill still applies to any future phase-shaped piece of work —
+the scoping rule, the branch and commit conventions, and the PR-doc structure below are what
+made each of the nine reviewable.
 
 ## The rule that shapes everything
 

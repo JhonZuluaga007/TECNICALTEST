@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/breed_characteristic_widget.dart';
+import 'package:tecnical_test_pragma/core/common_widgets/rating_meter.dart';
 import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
 import 'package:tecnical_test_pragma/core/utils/cats_result.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/pages/detail_cat_page.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
-import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/landing_status_views.dart';
+import 'package:tecnical_test_pragma/core/common_widgets/status_views.dart';
 
 import '../../../../helpers/builders.dart';
 import '../../../../helpers/mocks.dart';
@@ -75,15 +75,13 @@ void main() {
       await pumpDetail(tester);
 
       final characteristics = tester
-          .widgetList<BreedCharacteristicWidget>(
-            find.byType(BreedCharacteristicWidget),
-          )
+          .widgetList<RatingMeter>(find.byType(RatingMeter))
           .toList();
 
       expect(characteristics, hasLength(2));
-      expect(characteristics[0].nameCharacteristic, 'Intelligence:');
+      expect(characteristics[0].label, 'Intelligence:');
       expect(characteristics[0].value, 5);
-      expect(characteristics[1].nameCharacteristic, 'Adaptability:');
+      expect(characteristics[1].label, 'Adaptability:');
       expect(characteristics[1].value, 4);
     });
 
