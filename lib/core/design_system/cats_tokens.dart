@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'app_colors.dart';
+
 /// The colours this app needs that Material 3 has no role for.
 ///
-/// Only the five-dot rating meter in `BreedCharacteristicWidget` qualifies. A
+/// Only the five-dot rating meter in `RatingMeter` qualifies. A
 /// filled dot is not `primary` — `primary` is for the things the user acts on,
 /// and these dots are a read-only measure — and an empty dot is not
 /// `surfaceContainerHighest` either, because the pair has to stay legible against
@@ -27,7 +29,7 @@ final class CatsTokens extends ThemeExtension<CatsTokens> {
   final Color ratingEmpty;
 
   static const CatsTokens light = CatsTokens(
-    ratingFilled: Color(0xFFB1E0B3),
+    ratingFilled: kSeedColor,
     ratingEmpty: Color(0xFFE1DFDF),
   );
 

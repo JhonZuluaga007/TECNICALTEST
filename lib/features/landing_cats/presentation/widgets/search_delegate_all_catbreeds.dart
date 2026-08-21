@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_card.dart';
 import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/domain/use_cases/search_cat_breeds_use_case.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
@@ -86,11 +86,11 @@ class SearchDelegateAllCatbreeds extends SearchDelegate<List<CatBreedEntity>?> {
       itemCount: filterCatBreedEntity.length,
       itemBuilder: (_, int index) {
         final breed = filterCatBreedEntity[index];
-        return CardCatWidget(
-          nameCat: breed.name,
+        return BreedCard(
+          name: breed.name,
           image: BreedImage(referenceImageId: breed.referenceImageId),
-          countryOrigin: breed.origin,
-          intelligent: breed.intelligence,
+          origin: breed.origin,
+          intelligence: breed.intelligence,
           onPressed: () =>
               context.goNamed(detailPage, pathParameters: {'id': breed.id}),
         );

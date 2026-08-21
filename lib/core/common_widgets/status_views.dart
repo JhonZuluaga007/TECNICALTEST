@@ -1,19 +1,32 @@
 import 'package:flutter/material.dart';
 
+import 'package:tecnical_test_pragma/core/design_system/radii.dart';
 import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
 import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
 import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 
-/// The three non-list branches of `LandingPage`'s exhaustive `switch`.
+/// The non-list branches of a screen's exhaustive state `switch`.
 ///
-/// They are public, and in their own file, for two reasons: `landing_page.dart`
-/// stays readable, and widget tests can assert `find.byType(CatsErrorView)`
+/// They are public, and in their own file, for two reasons: the pages that use
+/// them stay readable, and widget tests can assert `find.byType(CatsErrorView)`
 /// instead of matching on copy — which Phase 7 has now moved into ARB files, so
 /// that indirection paid off exactly as intended.
 ///
-/// None of them knows about the bloc — [CatsErrorView] takes an `onRetry`
-/// callback — so each can be pumped on its own. Phase 9 promotes them to
-/// `core/common_widgets/` if a second screen ever needs them.
+/// None of them knows about a bloc — [CatsErrorView] takes an `onRetry`
+/// callback — so each can be pumped on its own.
+///
+/// Phase 9 moved them here from `features/landing_cats/`, where they were called
+/// `landing_status_views.dart`. The condition the old comment set — "if a second
+/// screen ever needs them" — had already been met by the detail screen, which
+/// was reaching across the feature boundary to import them. The move is legal
+/// where `BreedImage`'s is not: these four depend on nothing but `AppSpacing`,
+/// `CatsFailure` and the ARB files.
+///
+/// [CatsEmptyView] and [StaleBanner] still have exactly one consumer each. They
+/// came along anyway: [messageFor] has to live here for [CatsErrorView], and
+/// splitting the set would leave the landing feature importing its own copy
+/// mapping from `core/` while two of its four siblings stayed behind. Half a set
+/// in each layer is the worse boundary.
 
 /// Shown while the request is in flight, and for the initial state.
 class CatsLoadingView extends StatelessWidget {
@@ -22,6 +35,58 @@ class CatsLoadingView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(child: CircularProgressIndicator());
+  }
+}
+
+/// The shared body of the full-screen status views: an icon, a line of copy and
+/// an optional action.
+///
+/// Phase 9 extracted it from [CatsEmptyView] and [CatsErrorView], which were the
+/// same `Center`/`Padding`/`Column`/`Icon`/`Text` skeleton differing only in the
+/// icon, its colour, and whether a button followed.
+///
+/// Private, and in this file: two callers in one file do not need a public
+/// widget, and a third status view now costs four arguments instead of a copy.
+class _StatusMessage extends StatelessWidget {
+  const _StatusMessage({
+    required this.icon,
+    required this.iconColor,
+    required this.message,
+    this.action,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String message;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 48, color: iconColor),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge,
+            ),
+            // Both the gap and the button, or neither. Emitting the `SizedBox`
+            // unconditionally would push the empty view's copy 16 px up off
+            // centre for a button that is not there.
+            if (action case final action?) ...[
+              const SizedBox(height: AppSpacing.lg),
+              action,
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -34,27 +99,10 @@ class CatsEmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.pets_outlined,
-              size: 48,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              AppLocalizations.of(context).emptyBreeds,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge,
-            ),
-          ],
-        ),
-      ),
+    return _StatusMessage(
+      icon: Icons.pets_outlined,
+      iconColor: Theme.of(context).colorScheme.onSurfaceVariant,
+      message: AppLocalizations.of(context).emptyBreeds,
     );
   }
 }
@@ -72,27 +120,13 @@ class CatsErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              messageFor(l10n, failure),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            ElevatedButton(onPressed: onRetry, child: Text(l10n.retry)),
-          ],
-        ),
-      ),
+    return _StatusMessage(
+      icon: Icons.error_outline,
+      iconColor: Theme.of(context).colorScheme.error,
+      message: messageFor(l10n, failure),
+      action: ElevatedButton(onPressed: onRetry, child: Text(l10n.retry)),
     );
   }
 }
@@ -125,8 +159,8 @@ class StaleBanner extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.colorScheme.outline, width: 1),
-        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.outline),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Row(
         children: [

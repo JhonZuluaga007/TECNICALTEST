@@ -5,7 +5,7 @@ description: How to write tests in this repo — the harness (flutter_test_confi
 
 # Testing
 
-307 tests, `test/` mirrors `lib/` exactly (`lib/a/b/c.dart` → `test/a/b/c_test.dart`).
+331 tests, `test/` mirrors `lib/` exactly (`lib/a/b/c.dart` → `test/a/b/c_test.dart`).
 Stack: `flutter_test` + `bloc_test` + `mocktail`, plus `MockClient` from
 `package:http/testing.dart` at the HTTP boundary.
 
@@ -136,3 +136,20 @@ fvm flutter test --update-goldens test/features/landing_cats/presentation/pages/
 
 Regenerate deliberately, never to make a red test go green: read the diff triplet under
 `test/**/failures/` (gitignored since Phase 0) and decide whether the change was intended.
+
+**Every golden file must carry the tag**, as the first lines of the file:
+
+```dart
+@Tags(['golden'])
+library;
+```
+
+Phase 9's CI runs goldens on a macOS runner — the host these PNGs were generated on — and
+excludes them from the Linux job, because font rasterization differs between platforms and a
+Linux run would fail on an antialiased edge. The tag is what one job excludes and the other
+selects, from opposite sides, so nothing falls between them. **An untagged golden runs on Linux
+and fails there for a reason that has nothing to do with your change.** The tag is declared in
+`dart_test.yaml`.
+
+Goldens contribute **zero line coverage** — measured in Phase 9: 803/838 with and without them.
+They guard pixels. A green golden is not evidence that anything was exercised.

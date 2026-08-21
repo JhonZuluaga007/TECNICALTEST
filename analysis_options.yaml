@@ -9,20 +9,47 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
-linter:
-  # The lint rules applied to this project can be customized in the
-  # section below to disable rules from the `package:flutter_lints/flutter.yaml`
-  # included above or to enable additional rules. A list of all available lints
-  # and their documentation is published at https://dart.dev/lints.
-  #
-  # Instead of disabling a lint rule for the entire project in the
-  # section below, it can also be suppressed for a single line of code
-  # or a specific dart file by using the `// ignore: name_of_lint` and
-  # `// ignore_for_file: name_of_lint` syntax on the line or in the file
-  # producing the lint.
-  rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+# No `analyzer.exclude` for generated code. It was added during Phase 9 and
+# removed again in review, because the reason given for it was not true: with the
+# block disabled, `flutter analyze` reports **0 issues** either way. Every
+# generator here already emits its own `// ignore_for_file: type=lint` header
+# (`cats_failure.freezed.dart:3`, `injector.config.dart:8`,
+# `app_localizations.dart:11`), so the exclude removed nothing — while blinding
+# the analyzer to `lib/l10n/app_localizations*.dart`, which is not freezed output
+# and is exactly what breaks when an ARB key is renamed.
 
+linter:
+  rules:
+    # Phase 9, and the rule Phase 5 asked for by name. `Injector.setup()` became
+    # `async`, and a forgotten `await` on it was a review catch rather than an
+    # analyzer error — there are exactly three call sites, and one of them going
+    # unawaited means the app races its own dependency graph.
+    #
+    # Its first real catch was not a forgotten await at all: `_inFlight` in
+    # `LandingCatsRepositoryImpl` is a `Map<String, Future<...>>`, so `remove()`
+    # returns a `Future` and discarding it looks identical to dropping one on the
+    # floor. That call site now says `unawaited(...)`, which is the honest
+    # spelling of what it always meant.
+    - unawaited_futures
+
+# Considered in Phase 9 and deliberately NOT enabled:
+#
+# - `avoid_redundant_argument_values` — 22 hits, and it looked like a natural fit
+#   because this phase deleted `width: 1` and `radius: 10` by hand for exactly the
+#   reason the rule exists. Measured, the trade inverts: 20 of the 22 are in test
+#   fixtures, where an explicit value is documentation of the input rather than
+#   noise, and the 2 in `lib/` are deliberate too — `automaticallyImplyLeading:
+#   true` on the detail app bar states the contrast with the landing bar's
+#   `false`, and `preferRelativeImports: false` sits inside an `@InjectableInit`
+#   whose own doc comment argues for declaring things explicitly. A rule that
+#   would make 22 edits to win 0 real bugs is a rule that trains people to ignore
+#   the analyzer.
+#
+# - `always_declare_return_types`, `prefer_final_locals`, `use_string_buffers`,
+#   `cast_nullable_to_non_nullable` — all measured at **0 hits**. The codebase
+#   already satisfies them, so switching them on adds a line of config and guards
+#   nothing that is currently at risk. They are cheap to add the day one of them
+#   would actually fire.
+#
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

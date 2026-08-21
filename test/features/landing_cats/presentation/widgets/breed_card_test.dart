@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/breed_characteristic_widget.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
+import 'package:tecnical_test_pragma/core/common_widgets/rating_meter.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_card.dart';
 import 'package:tecnical_test_pragma/core/design_system/app_theme.dart';
 import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 
-import '../../../helpers/window_size.dart';
+import '../../../../helpers/window_size.dart';
 
 /// Phase 8's regression suite for the overflow that was real.
 ///
@@ -44,8 +44,8 @@ void main() {
     WidgetTester tester, {
     required double textScale,
     Size window = phone,
-    String nameCat = 'Egyptian Mau',
-    String countryOrigin = 'Egypt',
+    String name = 'Egyptian Mau',
+    String origin = 'Egypt',
   }) async {
     setWindowSize(tester, window);
     await tester.pumpWidget(
@@ -60,11 +60,11 @@ void main() {
               context,
             ).copyWith(textScaler: TextScaler.linear(textScale)),
             child: Scaffold(
-              body: CardCatWidget(
-                nameCat: nameCat,
+              body: BreedCard(
+                name: name,
                 image: const SizedBox(height: 100),
-                countryOrigin: countryOrigin,
-                intelligent: 5,
+                origin: origin,
+                intelligence: 5,
                 onPressed: () {},
               ),
             ),
@@ -74,7 +74,7 @@ void main() {
     );
   }
 
-  group('CardCatWidget layout', () {
+  group('BreedCard layout', () {
     // 2.0 is the value that used to overflow. 1.0 and 1.5 are here so a fix that
     // only worked at the extreme would still be caught.
     for (final scale in <double>[1.0, 1.5, 2.0]) {
@@ -98,8 +98,8 @@ void main() {
       await pumpCard(
         tester,
         textScale: 2.0,
-        nameCat: 'American Wirehair',
-        countryOrigin: 'United States',
+        name: 'American Wirehair',
+        origin: 'United States',
       );
 
       expect(overflows, isEmpty, reason: overflows.join(' | '));
@@ -110,14 +110,10 @@ void main() {
     ) async {
       captureOverflows();
       await pumpCard(tester, textScale: 1.0);
-      final tightTop = tester.getTopLeft(
-        find.byType(BreedCharacteristicWidget),
-      );
+      final tightTop = tester.getTopLeft(find.byType(RatingMeter));
 
       await pumpCard(tester, textScale: 2.0);
-      final looseTop = tester.getTopLeft(
-        find.byType(BreedCharacteristicWidget),
-      );
+      final looseTop = tester.getTopLeft(find.byType(RatingMeter));
 
       // The `Wrap` is what fixes the overflow, so the test asserts the wrapping
       // actually happened rather than only that nothing was reported: a card

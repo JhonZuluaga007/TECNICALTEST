@@ -1,29 +1,37 @@
 import 'package:flutter/material.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/breed_characteristic_widget.dart';
+import 'package:tecnical_test_pragma/core/common_widgets/rating_meter.dart';
 import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
 import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 
-class CardCatWidget extends StatelessWidget {
-  const CardCatWidget({
+/// One breed, as it appears in the landing list and in search results.
+///
+/// Phase 9 moved it down here from `core/common_widgets/`, where it was called
+/// `CardCatWidget`. It was never cross-cutting: both call sites are in this
+/// feature, and the widget reaches for `l10n.moreAction` and
+/// `l10n.intelligenceLabel` itself, so it could only ever render *this* card.
+class BreedCard extends StatelessWidget {
+  const BreedCard({
     super.key,
-    required this.nameCat,
+    required this.name,
     required this.image,
-    required this.countryOrigin,
-    required this.intelligent,
+    required this.origin,
+    required this.intelligence,
     required this.onPressed,
   });
-  final String nameCat;
+  final String name;
 
   /// The image, as a widget slot rather than a URL.
   ///
-  /// Phase 4 changed this from `String imageUrlCat`. This card lives in
-  /// `core/common_widgets/`, and resolving a breed image now needs a cubit that
-  /// belongs to the landing feature — taking a `referenceImageId` here would make
-  /// `core/` depend on a feature. A slot keeps the dependency pointing the right
-  /// way, and makes the card reusable with any image source.
+  /// Phase 4 changed this from `String imageUrlCat` to keep `core/` from
+  /// depending on a feature. That reason died with Phase 9's move, but the slot
+  /// stays for a second one that outlived it: taking a `referenceImageId` would
+  /// make every widget test that paints a card provide a `RepositoryProvider`
+  /// and a `GetBreedImageUseCase`, and the most valuable test in this file is
+  /// the Phase 8 overflow regression, which pumps the card with a cheap
+  /// stand-in at text scale 2.0.
   final Widget image;
-  final String countryOrigin;
-  final int intelligent;
+  final String origin;
+  final int intelligence;
   final void Function() onPressed;
 
   @override
@@ -31,15 +39,14 @@ class CardCatWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
+    // Phase 7: `color` and `surfaceTintColor` were both pinned to white. A
+    // `Card` already takes `colorScheme.surfaceContainerLow` and tints by
+    // elevation, which is what makes it legible in dark mode too.
+    //
+    // Phase 9: `elevation` and `shape` are gone from here too. They were a
+    // global decision written inside one feature's widget; they now come from
+    // `ThemeData.cardTheme`.
     return Card(
-      elevation: 2,
-      // Phase 7: `color` and `surfaceTintColor` were both pinned to white. A
-      // `Card` already takes `colorScheme.surfaceContainerLow` and tints by
-      // elevation, which is what makes it legible in dark mode too.
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outline, width: 1),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
@@ -53,7 +60,7 @@ class CardCatWidget extends StatelessWidget {
                 // fixed, and a truncated button reads as broken.
                 Expanded(
                   child: Text(
-                    nameCat,
+                    name,
                     style: theme.textTheme.bodyLarge,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -84,11 +91,10 @@ class CardCatWidget extends StatelessWidget {
               spacing: AppSpacing.md,
               runSpacing: AppSpacing.sm,
               children: [
-                Text(countryOrigin, style: theme.textTheme.bodyLarge),
-                BreedCharacteristicWidget(
-                  nameCharacteristic: l10n.intelligenceLabel,
-                  value: intelligent,
-                  radius: 10,
+                Text(origin, style: theme.textTheme.bodyLarge),
+                RatingMeter(
+                  label: l10n.intelligenceLabel,
+                  value: intelligence,
                   labelStyle: theme.textTheme.titleLarge,
                 ),
               ],

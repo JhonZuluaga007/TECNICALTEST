@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tecnical_test_pragma/cats_icons.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/my_app_scaffold.dart';
+import 'package:tecnical_test_pragma/core/common_widgets/app_scaffold.dart';
 import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
 import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 import 'package:tecnical_test_pragma/routers/routers.dart';
@@ -43,7 +43,7 @@ class _SplashCatBreedsState extends State<SplashCatBreeds> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return MyAppScaffold(
+    return AppScaffold(
       // Phase 7: both of these were pinned to white, which on a dark device gave
       // a white splash followed by a dark app.
       backgroundColor: theme.colorScheme.surface,

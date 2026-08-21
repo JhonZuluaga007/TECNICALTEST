@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Catbreeds — a Flutter app over [TheCatAPI](https://thecatapi.com), clean architecture per
-feature, under a **phased modernization** (Phases 0–8 merged, 9 pending). Every phase is
+feature, under a **phased modernization** (Phases 0–9 merged; the roadmap is complete). Every phase is
 compilable, testable and reviewable on its own.
 
 `README.md` is the 700-line historical record: the roadmap, and a changelog per phase
@@ -40,7 +40,9 @@ behind something you are about to change.
 | Install deps | `fvm flutter pub get` |
 | Analyze | `fvm flutter analyze` — must report **no issues** |
 | Format | `fvm dart format .` — must produce **no diff** |
-| Test | `fvm flutter test` — **307 tests**, all green |
+| Test | `fvm flutter test` — **331 tests**, all green |
+| Test without goldens | `fvm flutter test --exclude-tags golden` — 327; CI's Linux job runs this |
+| Goldens only | `fvm flutter test --tags golden` — 4; CI runs these on macOS |
 | One subtree | `fvm flutter test test/features/landing_cats/data` |
 | One case | `fvm flutter test --plain-name "exactly 1 request"` |
 | Codegen | `fvm dart run build_runner build --delete-conflicting-outputs` |
@@ -58,9 +60,9 @@ anonymously. A missing key is never the cause of an error screen.
 ```
 lib/
 ├── core/
-│   ├── common_widgets/     # Reusable widgets (card, text, network image)
+│   ├── common_widgets/     # Cross-feature widgets ONLY (scaffold, rating meter, status views)
 │   ├── config/             # endpoints
-│   ├── design_system/      # colors · theme · tokens · spacing · breakpoints
+│   ├── design_system/      # colors · theme · tokens · spacing · radii · breakpoints
 │   ├── errors/             # sealed class CatsFailure (freezed)
 │   ├── injector/           # get_it + injectable — the ONLY file in lib/ importing get_it
 │   ├── storage/            # KeyValueStore interface + hydrated_bloc impl
@@ -81,6 +83,26 @@ lib/
 - `presentation/` never touches a repository or a datasource; it goes through a use case.
 - Nothing outside `core/injector/` and `main.dart` calls `Injector.resolve`. Blocs and
   widgets receive their dependencies through the constructor or the widget tree.
+- **`core/` may never import from `features/`** — except `core/injector/`, which is the
+  composition root and exists to name concrete implementations.
+
+### Where a widget lives (Phase 9's rule, and it decides both directions)
+
+**`core/` is for what more than one feature uses.** A widget in `core/` with no cross-feature
+consumer is not shared code, it is misfiled code — and one that reaches for its own copy
+(`l10n.someLabel`) can never serve a second caller, so it belongs in the feature that owns that
+copy. Applied in both directions, this moved four widgets in Phase 9.
+
+Two corollaries worth knowing before you reach for the obvious fix:
+
+- **A widget's chrome and its composition move in opposite directions.** What is genuinely
+  shared about a card is elevation, radius and border — and in Flutter the reusable form of
+  that is `ThemeData`'s sub-themes, not a widget with more parameters. Push chrome *up* into
+  the theme and composition *down* into the feature. Do not "make it reusable" by adding
+  slots: an abstraction with one implementation is indirection.
+- **Legality beats intent.** Before promoting anything to `core/`, read its import block. If it
+  needs a use case or a cubit, the promotion is illegal no matter how many documents promise
+  it — `BreedImage` is the standing example.
 
 ### The load-bearing types
 
@@ -89,6 +111,7 @@ lib/
 | `sealed class CatsResult<T>` = `Ok` \| `Err` | `core/utils/` | The only success/failure channel. **No `Either`.** It defines no `==` on purpose — assert on the variant, then on the contents. |
 | `sealed class CatsFailure` | `core/errors/` | `network` · `timeout` · `server(statusCode)` · `unexpectedResponse` · `notFound(id)` · `unknown`. Adding a variant intentionally breaks every `switch` — fix each one, never add a `default`/`_`. |
 | `enum WindowSize` = `compact`\|`medium`\|`expanded`\|`large` | `core/design_system/` | Material 3 breakpoints (600/840/1200). `columns` drives the landing list-vs-grid split. Hand-rolled: the SDK ships no such API. |
+| `AppSpacing` · `AppRadius` | `core/design_system/` | A number earns a token when it expresses one decision at **more than one independent site**. A one-caller constant is worse than the literal, and a value that is already the SDK's default (`width: 1`) gets deleted, not named. |
 | `sealed class LandingCatsState` | `landing_cats/presentation/bloc/` | `initial` · `loading` · `loaded` · `stale` · `error`. `searchHistory` lives on **every** variant and must be carried through **every** `emit` — dropping it in one branch wipes the feature silently. |
 | `BreedsSnapshot` = `FreshBreeds` \| `StaleBreeds` | `landing_cats/domain/entities/` | An `Ok(StaleBreeds)` carries a failure: the call produced usable data, the failure describes its *freshness*. |
 
@@ -172,12 +195,23 @@ visible in the code.
 
 ## Known state (do not "fix" these as drive-by work)
 
-Each belongs to a pending phase; touching it early makes a diff unreviewable.
-
-| Thing | Owner |
+| Thing | Why it is like that |
 |---|---|
-| `analysis_options.yaml` is a bare `include:`; no CI; no coverage gate; no stale-codegen check in CI | Phase 9 |
-| `BreedImage` and the status views still live under `features/landing_cats/`, imported by the detail screen | Phase 9 |
+| `BreedImage` lives under `features/landing_cats/` and the detail screen imports it across the feature boundary | **Permanent, and not debt.** Phase 9 went to promote it — four documents had promised that — and found the promotion illegal: it needs `GetBreedImageUseCase` and `BreedImageCubit`, both landing-owned, so moving it would make `core/` import a feature. Do not try again. |
+| `AppScaffold` is a pass-through that forces every screen body to be a `Column` | Removing it means rewriting three screens' body structure: pixel risk and golden churn for no user-visible gain. Phase 9 removed its dead param and widened `appBar` instead. |
+| `splash_catbreeds.dart`'s `SizedBox(height: 170)` and `height: 300` | Genuinely magic — nobody can say what they mean, which is exactly why they must not be renamed into a confident-sounding token. Pin them with a splash golden before touching them. |
+| Whether the goldens reproduce on a host other than macOS | **Unverified.** CI pins the golden job to macOS, which sidesteps the question rather than answering it. |
+
+Gone as of Phase 9: `NetworkImageWidget` (deleted — one caller, a domain asset inside `core/`, and
+an `errorBuilder` that re-requested the URL that had just failed). `CardCatWidget` is now
+`BreedCard` under `features/landing_cats/`; `BreedCharacteristicWidget` is `RatingMeter`;
+`MyAppScaffold` is `AppScaffold`; the status views are `core/common_widgets/status_views.dart`;
+`_ThemeModeButton` is a public `ThemeModeButton` under `features/settings/`. **Card chrome
+(elevation, radius, outline) comes from `ThemeData.cardTheme`** — do not put it back on the
+widget. Radii come from `AppRadius`. `analysis_options.yaml` enables `unawaited_futures` and
+records, with measured hit counts, the rules that were considered and rejected. **CI exists**
+(`.github/workflows/ci.yml`): Linux runs format/analyze/test/coverage-gate/stale-codegen, macOS
+runs the goldens, split by the `golden` tag declared in `dart_test.yaml`.
 
 Gone as of Phase 8: `flutter_screenutil`, `ScreenUtil.init` inside `build`, `AppCatsResponsiveApp`,
 `core/config/helpers/responsive/`, and `ignoreOverflowErrors()` with all 23 of its call sites.

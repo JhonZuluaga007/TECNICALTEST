@@ -20,7 +20,9 @@ git diff --exit-code -- '*.freezed.dart' '*.g.dart' '*.config.dart'
 
 That check exists because it has already bitten: a mutation run restored a source file but
 left `injector.config.dart` stale, and the suite failed on a registration that was plainly
-present in the source. Nothing detects this automatically yet (Phase 9's CI owns it).
+present in the source. **CI detects it now** — `.github/workflows/ci.yml`'s "Generated files are
+not stale" step runs the two commands above on every push, so a forgotten regeneration is a red
+build rather than a confusing local failure.
 
 ## freezed 3.x — `abstract` vs `sealed`
 

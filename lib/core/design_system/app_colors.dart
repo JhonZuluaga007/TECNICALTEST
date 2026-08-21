@@ -3,13 +3,19 @@ import 'package:flutter/material.dart';
 /// The seed the whole palette is derived from.
 ///
 /// It is the app's existing accent — the green of the rating meter in
-/// `BreedCharacteristicWidget`, previously `AppCatsColor.mapColors["LigthGreen"]`
+/// `RatingMeter`, previously `AppCatsColor.mapColors["LigthGreen"]`
 /// — rather than a new colour chosen here. Keeping it means the redesign changes
 /// how the palette is *built* without changing what the app looks like it is.
 ///
-/// Its own lightness does not matter: [ColorScheme.fromSeed] reads the hue and
-/// generates the tonal palette, so a pale seed and a saturated one of the same hue
-/// produce the same scheme.
+/// **As a seed**, its own lightness does not matter: [ColorScheme.fromSeed] reads
+/// the hue and generates the tonal palette, so a pale seed and a saturated one of
+/// the same hue produce the same scheme.
+///
+/// Phase 9 qualified that sentence, because it stopped being the whole truth.
+/// `CatsTokens.light.ratingFilled` now *is* this constant rather than a copy of
+/// its value, and painted directly its lightness is the entire point — which is
+/// why `CatsTokens.dark` had to darken the pair rather than reuse it. Re-seeding
+/// the palette therefore moves the light rating dot and not the dark one.
 const Color kSeedColor = Color(0xFFB1E0B3);
 
 /// The light scheme.

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/breed_characteristic_widget.dart';
+import 'package:tecnical_test_pragma/core/common_widgets/rating_meter.dart';
 import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
 
 /// A single breed characteristic: its label and its value.
@@ -19,14 +19,17 @@ class ListCharacteristicsCatbreeds extends StatelessWidget {
     super.key,
     required this.characteristics,
     this.labelStyle,
-    this.radius,
+    this.dotRadius,
   });
 
   final List<BreedCharacteristic> characteristics;
 
   /// Phase 7: was `double? fontSize`. Defaults to `bodyLarge`.
   final TextStyle? labelStyle;
-  final double? radius;
+
+  /// Forwarded to [RatingMeter], which owns the default. Phase 9: this used to
+  /// pass `radius ?? 10`, restating a default the meter already applies.
+  final double? dotRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -40,10 +43,10 @@ class ListCharacteristicsCatbreeds extends StatelessWidget {
               // any window the app runs in, so it was "as wide as possible"
               // spelled as a number that happened to be big enough. Stretching
               // says it, and stops saying it wrong on a 1440 px desktop window.
-              BreedCharacteristicWidget(
-                radius: radius ?? 10,
+              RatingMeter(
+                dotRadius: dotRadius,
                 labelStyle: labelStyle ?? Theme.of(context).textTheme.bodyLarge,
-                nameCharacteristic: characteristic.label,
+                label: characteristic.label,
                 value: characteristic.value,
               ),
               const SizedBox(height: AppSpacing.sm),

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tecnical_test_pragma/core/design_system/spacing.dart';
 import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
-import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/landing_status_views.dart';
+import 'package:tecnical_test_pragma/core/common_widgets/status_views.dart';
 import 'package:tecnical_test_pragma/l10n/app_localizations.dart';
 
-import '../../../../helpers/pump_app.dart';
+import '../../helpers/pump_app.dart';
 
 void main() {
   // Phase 7: `messageFor` now takes an `AppLocalizations`. Loading the delegate
@@ -152,6 +153,68 @@ void main() {
 
       expect(find.byType(CatsErrorView), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('the shared status-message skeleton', () {
+    /// Vertical gaps inside one status view.
+    ///
+    /// Phase 9 pulled the empty and error views onto a common private body. The
+    /// difference between them is the trailing action, and the trap is emitting
+    /// its gap unconditionally: the empty view would gain 16 px of space below
+    /// copy that is supposed to sit centred, pushing it visibly off centre.
+    ///
+    /// Found by mutation, not by design — making the gap unconditional left the
+    /// whole suite green, so this is the case that was missing.
+    /// Matched on its height rather than by counting every `SizedBox` in the
+    /// subtree: `ElevatedButton` brings one of its own, so a raw count asserts
+    /// about Material's internals as much as about this layout.
+    Finder actionGapIn(Type view) => find.descendant(
+      of: find.byType(view),
+      matching: find.byWidgetPredicate(
+        (w) => w is SizedBox && w.height == AppSpacing.lg,
+      ),
+    );
+
+    testWidgets('the empty view emits no gap for the action it does not have', (
+      tester,
+    ) async {
+      await tester.pumpAppWith(const Scaffold(body: CatsEmptyView()));
+
+      expect(actionGapIn(CatsEmptyView), findsNothing);
+    });
+
+    testWidgets('the error view emits exactly one gap before its button', (
+      tester,
+    ) async {
+      await tester.pumpAppWith(
+        Scaffold(
+          body: CatsErrorView(failure: const NetworkFailure(), onRetry: () {}),
+        ),
+      );
+
+      expect(actionGapIn(CatsErrorView), findsOneWidget);
+    });
+
+    testWidgets('the empty view keeps its content vertically centred', (
+      tester,
+    ) async {
+      // The user-visible consequence of the same trap, stated as a position
+      // rather than as a widget count. The `Column` fills the viewport, so its
+      // own edges say nothing; what moves is the icon-to-copy block inside it,
+      // which a trailing 16 px gap would push up by half that.
+      await tester.pumpAppWith(const Scaffold(body: CatsEmptyView()));
+
+      final column = tester.getRect(
+        find.descendant(
+          of: find.byType(CatsEmptyView),
+          matching: find.byType(Column),
+        ),
+      );
+      final icon = tester.getRect(find.byType(Icon));
+      final copy = tester.getRect(find.byType(Text));
+
+      expect((icon.top + copy.bottom) / 2, closeTo(column.center.dy, 0.5));
     });
   });
 }

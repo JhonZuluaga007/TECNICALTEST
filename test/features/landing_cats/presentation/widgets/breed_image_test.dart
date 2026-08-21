@@ -112,4 +112,95 @@ void main() {
       verify(() => useCase('0XYvRd7oD')).called(1);
     });
   });
+
+  group('BreedImage when the network image itself fails to load', () {
+    /// Phase 9. This group covers the defect the deleted `NetworkImageWidget`
+    /// carried: its `errorBuilder` branched on `stackTrace != null` and, when the
+    /// stack trace was null, returned `Image.network(imageUrl)` — re-issuing the
+    /// request that had just failed, from inside its own error handler, with no
+    /// `errorBuilder` on the retry.
+    ///
+    /// The builder is invoked directly rather than by making a real load fail.
+    /// Proving "the failed URL is not requested a second time" through
+    /// `debugNetworkImageHttpClientProvider` would need `dart:io` in the test and
+    /// a process-global override that fights the binding's own; calling the
+    /// builder exercises the same branch deterministically in three lines.
+    testWidgets('shows the asset instead of re-requesting the failed URL', (
+      tester,
+    ) async {
+      when(
+        () => useCase(any()),
+      ).thenAnswer((_) async => const Ok('https://cdn2.thecatapi.com/x.jpg'));
+
+      await pumpImage(tester);
+      await tester.pumpAndSettle();
+
+      final finder = find.byWidgetPredicate(
+        (w) => w is Image && w.image is NetworkImage,
+      );
+      final image = tester.widget<Image>(finder);
+
+      // A null stack trace is the input that used to take the retry branch.
+      final onError = image.errorBuilder!(
+        tester.element(finder),
+        Object(),
+        null,
+      );
+
+      expect(onError, isA<Image>());
+      expect((onError as Image).image, isA<AssetImage>());
+      expect(onError.image, isNot(isA<NetworkImage>()));
+    });
+
+    testWidgets('honours the caller height in the failure fallback', (
+      tester,
+    ) async {
+      when(
+        () => useCase(any()),
+      ).thenAnswer((_) async => const Ok('https://cdn2.thecatapi.com/x.jpg'));
+
+      await tester.pumpWidget(
+        RepositoryProvider<GetBreedImageUseCase>.value(
+          value: useCase,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: BreedImage(referenceImageId: '0XYvRd7oD', height: 80),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final finder = find.byWidgetPredicate(
+        (w) => w is Image && w.image is NetworkImage,
+      );
+      final onError =
+          tester.widget<Image>(finder).errorBuilder!(
+                tester.element(finder),
+                Object(),
+                null,
+              )
+              as Image;
+
+      // The old code hardcoded `height: 250` in the error branch, so a caller's
+      // height was silently dropped exactly when the fallback appeared.
+      expect(onError.height, 80);
+    });
+
+    testWidgets('defaults the fallback height when the caller gives none', (
+      tester,
+    ) async {
+      when(
+        () => useCase(any()),
+      ).thenAnswer((_) async => const Err(NetworkFailure()));
+
+      await pumpImage(tester);
+      await tester.pumpAndSettle();
+
+      final asset = tester.widget<Image>(
+        find.byWidgetPredicate((w) => w is Image && w.image is AssetImage),
+      );
+      expect(asset.height, 250);
+    });
+  });
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:injectable/injectable.dart';
 import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
 import 'package:tecnical_test_pragma/core/utils/cats_result.dart';
@@ -165,7 +166,11 @@ class LandingCatsRepositoryImpl implements LandingCatsRepository {
       // Always cleared, including on failure: leaving a failed future parked here
       // would make the error permanent for that id, and a retry impossible for as
       // long as the app lives.
-      _inFlight.remove(referenceImageId);
+      //
+      // `unawaited`, because `_inFlight` maps to `Future`s, so `remove` hands one
+      // back and discarding it is indistinguishable from forgetting an `await`.
+      // There is nothing to wait for: this is the future the caller already holds.
+      unawaited(_inFlight.remove(referenceImageId));
     }
   }
 }

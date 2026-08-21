@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-class MyAppScaffold extends StatelessWidget {
-  const MyAppScaffold({
+/// The `Scaffold` + `Column` body shared by all three screens.
+class AppScaffold extends StatelessWidget {
+  const AppScaffold({
     super.key,
-    this.scrollDirection,
     required this.children,
     this.mainAxisAlignment,
     this.crossAxisAlignment,
@@ -12,11 +12,15 @@ class MyAppScaffold extends StatelessWidget {
     this.backgroundColor,
     this.bottomSheet,
   });
-  final Axis? scrollDirection;
   final List<Widget> children;
   final MainAxisAlignment? mainAxisAlignment;
   final CrossAxisAlignment? crossAxisAlignment;
-  final AppBar? appBar;
+
+  /// Phase 9: was `AppBar?`. `Scaffold` itself asks only for a
+  /// `PreferredSizeWidget`, so the narrower type bought nothing and ruled out
+  /// every other bar the framework offers — a wrapper that constrains its
+  /// callers more than the thing it wraps is not reusable.
+  final PreferredSizeWidget? appBar;
   final EdgeInsetsGeometry? paddingColumn;
   final Color? backgroundColor;
   final Widget? bottomSheet;

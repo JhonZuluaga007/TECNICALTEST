@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:tecnical_test_pragma/core/common_widgets/card/card_cat_widget.dart';
+import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/breed_card.dart';
 import 'package:tecnical_test_pragma/core/errors/cats_failure.dart';
 import 'package:tecnical_test_pragma/core/utils/cats_result.dart';
 import 'package:tecnical_test_pragma/features/detail_cat/presentation/pages/detail_cat_page.dart';
@@ -11,7 +11,7 @@ import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/breed
 import 'package:tecnical_test_pragma/features/landing_cats/domain/entities/catbreed_entity.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/bloc/landing_cats_bloc.dart';
 import 'package:tecnical_test_pragma/features/landing_cats/presentation/pages/landing_page.dart';
-import 'package:tecnical_test_pragma/features/landing_cats/presentation/widgets/landing_status_views.dart';
+import 'package:tecnical_test_pragma/core/common_widgets/status_views.dart';
 
 import '../../../../helpers/builders.dart';
 import '../../../../helpers/mocks.dart';
@@ -102,7 +102,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verify(() => useCase.getAllCatsCall()).called(1);
-      expect(find.byType(CardCatWidget), findsWidgets);
+      expect(find.byType(BreedCard), findsWidgets);
     });
 
     testWidgets('renders one card per breed', (tester) async {
@@ -118,13 +118,13 @@ void main() {
       // Phase 8 simplified this in two ways. The pump defaults to a phone, so
       // this is the one-column `ListView` branch and there is exactly one list to
       // find. And the filter by `scrollDirection` that used to be needed here is
-      // gone with the horizontal `ListView` that `BreedCharacteristicWidget`
-      // nested inside every card — five dots that always fit did not need a
-      // scrollable, and it cost a `ScrollPosition` per card.
+      // gone with the horizontal `ListView` that `RatingMeter` nested inside
+      // every card — five dots that always fit did not need a scrollable, and it
+      // cost a `ScrollPosition` per card.
       final list = tester.widget<ListView>(find.byType(ListView));
       expect(list.scrollDirection, Axis.vertical);
       expect(list.semanticChildCount, 3);
-      expect(find.byType(CardCatWidget), findsWidgets);
+      expect(find.byType(BreedCard), findsWidgets);
       expect(find.text(breeds.first.name), findsOneWidget);
     });
 
@@ -214,7 +214,7 @@ void main() {
 
       expect(bloc.state, isA<CatsLoading>());
       expect(find.byType(CatsLoadingView), findsOneWidget);
-      expect(find.byType(CardCatWidget), findsNothing);
+      expect(find.byType(BreedCard), findsNothing);
       expect(find.byType(CatsErrorView), findsNothing);
 
       // Complete the completer so no pending work is left behind.
@@ -236,7 +236,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(CatsEmptyView), findsOneWidget);
-      expect(find.byType(CardCatWidget), findsNothing);
+      expect(find.byType(BreedCard), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -256,7 +256,7 @@ void main() {
 
       expect(find.byType(CatsErrorView), findsOneWidget);
       expect(find.byType(CatsLoadingView), findsNothing);
-      expect(find.byType(CardCatWidget), findsNothing);
+      expect(find.byType(BreedCard), findsNothing);
     });
 
     testWidgets('the error view shows the message for that specific failure', (
@@ -299,7 +299,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(CatsErrorView), findsNothing);
-      expect(find.byType(CardCatWidget), findsWidgets);
+      expect(find.byType(BreedCard), findsWidgets);
     });
 
     testWidgets('the search icon is reachable while the error view is shown', (
@@ -326,8 +326,12 @@ void main() {
     });
 
     testWidgets('unmounting it disposes the ScrollController', (tester) async {
-      // `CardCatWidget` overflows with the test font (every glyph is a full
-      // em), not in the real app. See the helper.
+      // Phase 9: this used to say the card overflows under the test font and to
+      // "see the helper". Both halves are dead — Phase 7 bundled the real Acme,
+      // so glyphs are no longer full em squares, and Phase 8 deleted
+      // `ignoreOverflowErrors()` after proving all 23 call sites passed without
+      // it. The overflow this file used to work around is measured and fixed in
+      // `breed_card_test.dart`.
       stubSuccess();
 
       await pumpLoaded(tester);
@@ -345,8 +349,12 @@ void main() {
     testWidgets('tapping "More..." navigates to the detail by id', (
       tester,
     ) async {
-      // `CardCatWidget` overflows with the test font (every glyph is a full
-      // em), not in the real app. See the helper.
+      // Phase 9: this used to say the card overflows under the test font and to
+      // "see the helper". Both halves are dead — Phase 7 bundled the real Acme,
+      // so glyphs are no longer full em squares, and Phase 8 deleted
+      // `ignoreOverflowErrors()` after proving all 23 call sites passed without
+      // it. The overflow this file used to work around is measured and fixed in
+      // `breed_card_test.dart`.
       final breeds = stubSuccess();
 
       await tester.pumpRouter(
@@ -401,7 +409,7 @@ void main() {
       tester,
     ) async {
       // `messageFor`'s right-hand sides were the last hardcoded strings in the
-      // presentation layer (`TODO(phase 7)` in `landing_status_views.dart`).
+      // presentation layer (`TODO(phase 7)` in `status_views.dart`).
       // Interpolation included: the status code has no `format:` in the ARB, so
       // 503 must not come out as "1,503" or as a localized decimal.
       stubFailure(const ServerFailure(statusCode: 503));
@@ -433,7 +441,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(StaleBanner), findsOneWidget);
-      expect(find.byType(CardCatWidget), findsWidgets);
+      expect(find.byType(BreedCard), findsWidgets);
       expect(find.byType(CatsErrorView), findsNothing);
       expect(find.byType(CatsLoadingView), findsNothing);
     });
@@ -482,7 +490,7 @@ void main() {
       // delegate found anything, and dropping `CatsStale` from the app bar's
       // pattern left it passing. Counting cards is what actually distinguishes
       // "searched a list" from "searched nothing".
-      expect(find.byType(CardCatWidget), findsOneWidget);
+      expect(find.byType(BreedCard), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });
